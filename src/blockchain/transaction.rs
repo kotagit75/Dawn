@@ -2,7 +2,7 @@ use openssl::error::ErrorStack;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    address::Address,
+    blockchain::address::Address,
     util::{key::SK, signature::Signature},
 };
 

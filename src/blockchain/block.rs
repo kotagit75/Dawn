@@ -2,9 +2,7 @@ use openssl::error::ErrorStack;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    address::Address,
-    beacon::Beacon,
-    transaction::Transaction,
+    blockchain::{address::Address, beacon::Beacon, transaction::Transaction},
     util::{
         hash::{Hashed, hash},
         key::{PK, SK},
