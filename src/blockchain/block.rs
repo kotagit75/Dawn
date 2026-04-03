@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use vdf::InvalidIterations;
 
 use crate::{
-    blockchain::{address::Address, beacon::Beacon, transaction::Transaction},
+    beacon::Beacon,
+    blockchain::{address::Address, transaction::Transaction},
     util::{
         hash::{Hashed, hash},
         key::{PK, SK},
