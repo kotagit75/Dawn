@@ -16,6 +16,7 @@ pub struct Block {
     pub timestamp: u64,
     pub transactions: Vec<Transaction>,
     pub beacon: Beacon,
+    pub vdf_solution: Vec<u8>,
     pub previous_hash: Hashed,
     pub issuer: Address,
     pub signature: Signature,
@@ -28,6 +29,7 @@ impl Block {
         timestamp: u64,
         transactions: Vec<Transaction>,
         beacon: Beacon,
+        vdf_solution: Vec<u8>,
         issuer: &Address,
         previous_hash: Hashed,
         signature: Signature,
@@ -37,6 +39,7 @@ impl Block {
             timestamp,
             &transactions,
             beacon.clone(),
+            &vdf_solution,
             issuer,
             previous_hash,
             signature.clone(),
@@ -46,6 +49,7 @@ impl Block {
             timestamp,
             transactions,
             beacon,
+            vdf_solution,
             previous_hash,
             issuer: issuer.clone(),
             signature,
@@ -57,6 +61,7 @@ impl Block {
         timestamp: u64,
         transactions: Vec<Transaction>,
         beacon: Beacon,
+        vdf_solution: Vec<u8>,
         issuer: &Address,
         previous_hash: Hashed,
         sk: &SK,
@@ -66,6 +71,7 @@ impl Block {
             timestamp,
             transactions.clone(),
             beacon.clone(),
+            vdf_solution.clone(),
             issuer,
             previous_hash,
             create_block_signature(
@@ -73,6 +79,7 @@ impl Block {
                 timestamp,
                 &transactions,
                 beacon.clone(),
+                &vdf_solution,
                 issuer,
                 previous_hash,
                 sk,
@@ -86,6 +93,7 @@ impl Block {
                 self.timestamp,
                 &self.transactions,
                 self.beacon.clone(),
+                &self.vdf_solution,
                 &self.issuer,
                 self.previous_hash.clone(),
             )
@@ -104,13 +112,14 @@ pub fn calculate_hash(
     timestamp: u64,
     transactions: &[Transaction],
     beacon: Beacon,
+    vdf_solution: &[u8],
     issuer: &Address,
     previous_hash: Hashed,
     signature: Signature,
 ) -> Hashed {
     hash(
         format!(
-            "{index}{timestamp}{transactions:?}{beacon:?}{issuer:?}{previous_hash:?}{signature:?}"
+            "{index}{timestamp}{transactions:?}{beacon:?}{vdf_solution:?}{issuer:?}{previous_hash:?}{signature:?}"
         )
         .as_bytes(),
     )
@@ -121,12 +130,15 @@ fn block_to_buf_for_signature(
     timestamp: u64,
     transactions: &[Transaction],
     beacon: Beacon,
+    vdf_solution: &[u8],
     issuer: &Address,
     previous_hash: Hashed,
 ) -> Vec<u8> {
-    format!("{index}{timestamp}{transactions:?}{beacon:?}{previous_hash:?}{issuer:?}")
-        .as_bytes()
-        .to_vec()
+    format!(
+        "{index}{timestamp}{transactions:?}{beacon:?}{vdf_solution:?}{previous_hash:?}{issuer:?}"
+    )
+    .as_bytes()
+    .to_vec()
 }
 
 fn create_block_signature(
@@ -134,6 +146,7 @@ fn create_block_signature(
     timestamp: u64,
     transactions: &[Transaction],
     beacon: Beacon,
+    vdf_solution: &[u8],
     issuer: &Address,
     previous_hash: Hashed,
     sk: &SK,
@@ -143,6 +156,7 @@ fn create_block_signature(
         timestamp,
         transactions,
         beacon,
+        vdf_solution,
         issuer,
         previous_hash,
     );
@@ -158,6 +172,7 @@ pub fn genesis_block() -> Block {
         0,
         Vec::new(),
         Beacon { value: 0 },
+        Vec::new(),
         &pk,
         [
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
