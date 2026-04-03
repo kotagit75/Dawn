@@ -5,6 +5,8 @@ use openssl::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::util::signature::{Signature, sign, verify};
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PK {
     pub der: String,
@@ -22,6 +24,9 @@ impl PK {
     }
     pub fn key(&self) -> PKey<Public> {
         PKey::public_key_from_der(&hex::decode(self.der.clone()).unwrap()).unwrap()
+    }
+    pub fn verify(&self, data: &[u8], signature: &Signature) -> bool {
+        verify(data, self.clone(), signature.clone())
     }
 }
 
@@ -49,6 +54,9 @@ impl SK {
             .and_then(|pem| Rsa::public_key_from_pem(pem.as_slice()))
             .and_then(PKey::from_rsa)
             .map(PK::new)
+    }
+    pub fn sign(&self, data: &[u8]) -> Result<Signature, ErrorStack> {
+        sign(data, self.clone())
     }
 }
 
