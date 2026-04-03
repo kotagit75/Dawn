@@ -50,6 +50,10 @@ impl Transaction {
             &self.signature,
         )
     }
+
+    pub fn is_valid(&self) -> bool {
+        self.verify_signature() && self.amount > 0
+    }
 }
 
 fn transacction_to_buf_for_signature(
