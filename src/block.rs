@@ -7,7 +7,7 @@ use crate::{
     transaction::Transaction,
     util::{
         hash::{Hashed, hash},
-        key::SK,
+        key::{PK, SK},
         signature::Signature,
     },
 };
@@ -145,4 +145,22 @@ fn create_block_signature(
         previous_hash,
     );
     sk.sign(&data)
+}
+
+pub fn genesis_block() -> Block {
+    let pk = PK {
+        der: "".to_string(),
+    };
+    Block::new(
+        0,
+        0,
+        Vec::new(),
+        Beacon { value: 0 },
+        &pk,
+        [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        Vec::new(),
+    )
 }
