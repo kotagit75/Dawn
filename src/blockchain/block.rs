@@ -1,5 +1,6 @@
 use openssl::error::ErrorStack;
 use serde::{Deserialize, Serialize};
+use vdf::InvalidIterations;
 
 use crate::{
     blockchain::{address::Address, beacon::Beacon, transaction::Transaction},
@@ -7,6 +8,7 @@ use crate::{
         hash::{Hashed, hash},
         key::{PK, SK},
         signature::Signature,
+        vdf::{solve, verify_solution},
     },
 };
 
@@ -101,9 +103,25 @@ impl Block {
             &self.signature,
         )
     }
+    pub fn verify_vdf_solution(&self) -> bool {
+        verify_solution(
+            block_to_buf_for_vdf(
+                self.index,
+                self.timestamp,
+                &self.transactions,
+                self.beacon.clone(),
+                &self.issuer,
+                self.previous_hash.clone(),
+            )
+            .as_slice(),
+            &self.vdf_solution,
+        )
+    }
 
     pub fn is_valid(&self) -> bool {
-        self.verify_signature() && self.transactions.iter().all(|t| t.is_valid())
+        self.verify_signature()
+            && self.verify_vdf_solution()
+            && self.transactions.iter().all(|t| t.is_valid())
     }
 }
 
@@ -179,5 +197,38 @@ pub fn genesis_block() -> Block {
             0, 0, 0,
         ],
         Vec::new(),
+    )
+}
+
+fn block_to_buf_for_vdf(
+    index: u64,
+    timestamp: u64,
+    transactions: &[Transaction],
+    beacon: Beacon,
+    issuer: &Address,
+    previous_hash: Hashed,
+) -> Vec<u8> {
+    format!("{index}{timestamp}{transactions:?}{beacon:?}{previous_hash:?}{issuer:?}")
+        .as_bytes()
+        .to_vec()
+}
+pub fn solve_block_vdf(
+    index: u64,
+    timestamp: u64,
+    transactions: &[Transaction],
+    beacon: Beacon,
+    issuer: &Address,
+    previous_hash: Hashed,
+) -> Result<Vec<u8>, InvalidIterations> {
+    solve(
+        block_to_buf_for_vdf(
+            index,
+            timestamp,
+            transactions,
+            beacon,
+            issuer,
+            previous_hash,
+        )
+        .as_slice(),
     )
 }
