@@ -246,3 +246,5 @@ pub fn solve_block_vdf(
         .as_slice(),
     )
 }
+
+pub const NUMBER_OF_TRANSACTIONS_PER_BLOCK: usize = 4;
