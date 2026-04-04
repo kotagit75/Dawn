@@ -37,7 +37,7 @@ impl Block {
         previous_hash: Hashed,
         signature: Signature,
     ) -> Self {
-        let hash = calculate_hash_for_block(
+        let hash = calculate_hash(
             index,
             timestamp,
             &transactions,
@@ -126,7 +126,7 @@ impl Block {
     }
 }
 
-pub fn calculate_hash_for_block(
+pub fn calculate_hash(
     index: u64,
     timestamp: i64,
     transactions: &[Transaction],
