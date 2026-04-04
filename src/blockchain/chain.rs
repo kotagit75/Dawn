@@ -68,6 +68,21 @@ impl Chain {
             self.clone()
         }
     }
+
+    pub fn add_block(&self, block: Block) -> Self {
+        if is_valid_new_block(&block, &self.get_latest_block()) {
+            Self {
+                blocks: self
+                    .blocks
+                    .iter()
+                    .chain(std::iter::once(&block))
+                    .cloned()
+                    .collect(),
+            }
+        } else {
+            self.clone()
+        }
+    }
 }
 
 pub fn is_valid_new_block(block: &Block, previous_block: &Block) -> bool {
