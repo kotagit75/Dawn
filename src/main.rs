@@ -1,6 +1,7 @@
 pub mod beacon;
 pub mod blockchain;
 pub mod node;
+pub mod state;
 pub mod util;
 
 fn main() {

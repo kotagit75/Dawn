@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-struct Chain {
+pub struct Chain {
     blocks: Vec<Block>,
 }
 
