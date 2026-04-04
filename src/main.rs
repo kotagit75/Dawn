@@ -22,15 +22,19 @@ async fn main() {
 
     let (event_tx, mut event_rx) = mpsc::channel(256);
     let (state_tx, mut state_rx) = watch::channel(state.clone());
-    let api_tx = event_tx.clone();
+    let event_tx_clone = event_tx.clone();
     tokio::spawn(async move {
-        api::init_api(api_tx, state_rx).await;
+        api::init_api(event_tx_clone, state_rx).await;
     });
     while let Some((new_state, effects)) = event_rx.recv().await.map(|event| update(event, state)) {
-        state = new_state;
+        state = new_state.clone();
         let _ = state_tx.send(state.clone());
         for effect in effects {
-            run_effect(effect).await;
+            let state_clone = new_state.clone();
+            let event_tx_clone = event_tx.clone();
+            tokio::spawn(async move {
+                run_effect(state_clone, event_tx_clone, effect).await;
+            });
         }
     }
 }

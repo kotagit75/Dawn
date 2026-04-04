@@ -1,7 +1,7 @@
 use vdf::{PietrzakVDFParams, VDF, VDFParams};
 
-const VDF_DIFFICULTY: u64 = 68;
-const VDF_BITS: u16 = 512;
+const VDF_DIFFICULTY: u64 = 100000;
+const VDF_BITS: u16 = 1024;
 
 pub fn verify_solution(challenge: &[u8], solution: &[u8]) -> bool {
     let vdf = PietrzakVDFParams(VDF_BITS).new();

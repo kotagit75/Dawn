@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     beacon::Beacon,
     blockchain::{
-        block::{Block, genesis_block},
+        address::Address,
+        block::{Block, genesis_block, solve_block_vdf},
         transaction::Transaction,
     },
     util::key::SK,
@@ -32,19 +33,29 @@ impl Chain {
     pub fn generate_next_block(
         &self,
         sk: &SK,
+        issuer: &Address,
         beacon: Beacon,
         transactions: Vec<Transaction>,
     ) -> Result<Block, ErrorStack> {
         let previous_block: Block = self.get_latest_block();
         let next_index: u64 = previous_block.index + 1;
         let next_timestamp: i64 = chrono::Utc::now().timestamp_millis();
+        let vdf_solution = solve_block_vdf(
+            next_index,
+            next_timestamp,
+            &transactions,
+            beacon.clone(),
+            issuer,
+            previous_block.hash,
+        )
+        .unwrap();
         Block::new_with_creating_signature(
             next_index,
             next_timestamp,
             transactions,
             beacon,
-            vec![],
-            &previous_block.issuer,
+            vdf_solution,
+            issuer,
             previous_block.hash,
             sk,
         )
