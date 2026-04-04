@@ -1,7 +1,11 @@
 pub mod beacon;
 pub mod blockchain;
+pub mod node;
 pub mod util;
 
 fn main() {
-    println!("Hello, world!");
+    let Ok(sk) = node::load_key() else {
+        return;
+    };
+    println!("address: {:?}", sk.to_pk())
 }
