@@ -124,6 +124,19 @@ impl Block {
             && self.verify_vdf_solution()
             && self.transactions.iter().all(|t| t.is_valid())
     }
+
+    pub fn calculate_hash(&self) -> Hashed {
+        calculate_hash(
+            self.index,
+            self.timestamp,
+            &self.transactions,
+            self.beacon.clone(),
+            &self.vdf_solution,
+            &self.issuer,
+            self.previous_hash.clone(),
+            self.signature.clone(),
+        )
+    }
 }
 
 pub fn calculate_hash(
