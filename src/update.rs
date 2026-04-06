@@ -61,7 +61,7 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
         }
         Event::CompletedMineBlock(new_block) => {
             let new_state = State {
-                chain: state.chain.add_block(new_block),
+                chain: state.chain.add_block(new_block, true),
                 transactions: Vec::new(),
                 ..state
             };
@@ -74,7 +74,7 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
 pub async fn run_effect(state: State, event_tx: mpsc::Sender<Event>, effect: Effect) {
     match effect {
         Effect::MineBlock(transactions) => {
-            let Some(beacon) = get_beacon() else {
+            let Some(beacon) = get_beacon(&state.chain.get_beacon_history()) else {
                 return;
             };
             let Ok(event) = state

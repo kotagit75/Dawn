@@ -21,7 +21,7 @@ fn get_temperature(lat: f64, lon: f64) -> Option<i32> {
     }
 }
 
-pub fn get_beacon() -> Option<Beacon> {
+pub fn get_beacon(history: &[Beacon]) -> Option<Beacon> {
     let positions = [
         (40.782514, -73.965446),
         (36.2048, 138.2529),
@@ -32,5 +32,7 @@ pub fn get_beacon() -> Option<Beacon> {
         .iter()
         .flatten()
         .sum();
-    Some(Beacon { value: sum })
+    Some(Beacon {
+        value: sum + history.iter().map(|b| b.value).sum::<i32>(),
+    })
 }

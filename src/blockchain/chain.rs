@@ -2,7 +2,7 @@ use openssl::error::ErrorStack;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    beacon::Beacon,
+    beacon::{Beacon, get_beacon},
     blockchain::{
         address::Address,
         block::{Block, genesis_block, solve_block_vdf},
@@ -80,7 +80,10 @@ impl Chain {
         }
     }
 
-    pub fn add_block(&self, block: Block) -> Self {
+    pub fn add_block(&self, block: Block, generated_now: bool) -> Self {
+        if generated_now && get_beacon(&self.get_beacon_history()) != Some(block.beacon.clone()) {
+            return self.clone();
+        }
         if is_valid_new_block(&block, &self.get_latest_block()) {
             Self {
                 blocks: self
@@ -129,6 +132,13 @@ impl Chain {
             .filter(|tx| &tx.address == address)
             .map(|tx| tx.amount)
             .sum()
+    }
+
+    pub fn get_beacon_history(&self) -> Vec<Beacon> {
+        self.blocks
+            .iter()
+            .map(|block| block.beacon.clone())
+            .collect()
     }
 }
 
