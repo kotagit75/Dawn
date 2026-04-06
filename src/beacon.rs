@@ -23,8 +23,9 @@ fn get_temperature(lat: f64, lon: f64) -> Option<i32> {
 
 pub fn get_beacon() -> Option<Beacon> {
     let positions = [
-        (40.782514, -73.965446), // Central Park
-        (36.2048, 138.2529),     // Japan
+        (40.782514, -73.965446),
+        (36.2048, 138.2529),
+        (51.476856, -0.0004847),
     ];
     let sum: i32 = positions
         .map(|pos| get_temperature(pos.0, pos.1))
