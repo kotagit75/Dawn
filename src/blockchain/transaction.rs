@@ -61,9 +61,7 @@ fn transacction_to_buf_for_signature(
     recipient: &Address,
     amount: u64,
 ) -> Vec<u8> {
-    format!("{} -> {}: {}", sender, recipient, amount)
-        .as_bytes()
-        .to_vec()
+    format!("{sender}{recipient}{amount}").as_bytes().to_vec()
 }
 
 fn create_transaction_signature(
