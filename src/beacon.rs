@@ -31,6 +31,7 @@ pub fn get_beacon(history: &[Beacon]) -> Option<Beacon> {
         (34.6900806, 135.1956311),
         (35.1814506, 136.9065571),
         (34.3852894, 132.4553055),
+        (40.599217, 140.484557),
     ];
     let sum: i32 = positions
         .map(|pos| get_temperature(pos.0, pos.1))
