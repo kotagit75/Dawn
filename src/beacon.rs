@@ -1,3 +1,4 @@
+use geojson::{FeatureCollection, GeometryValue};
 use std::{env::current_dir, process::Command};
 
 use serde::{Deserialize, Serialize};
@@ -22,21 +23,23 @@ fn get_temperature(lon: f64, lat: f64) -> Option<i32> {
 }
 
 pub fn get_beacon(history: &[Beacon]) -> Option<Beacon> {
-    let positions = [
-        (130.4016888888889, 33.59018333333334),
-        (140.7290611111111, 41.76869722222222),
-        (139.6379638888889, 35.443675),
-        (135.76815, 35.01156388888889),
-        (140.8694166666667, 38.26819444444445),
-        (135.1956305555556, 34.69008055555555),
-        (136.9065583333334, 35.18145),
-        (132.4553055555556, 34.38528888888889),
-        (140.4845583333333, 40.599217),
-        (130.55, 31.5667),
-    ];
-    let sum: i32 = positions
-        .map(|pos| get_temperature(pos.0, pos.1))
+    let Ok(collection) = include_str!("beacon/target.geojson").parse::<FeatureCollection>() else {
+        return None;
+    };
+    let locations: Vec<geojson::Position> = collection
+        .features
         .iter()
+        .map(|feature| feature.geometry.clone())
+        .flatten()
+        .map(|geometry| match geometry.value {
+            GeometryValue::Point { coordinates } => Some(coordinates),
+            _ => None,
+        })
+        .flatten()
+        .collect();
+    let sum: i32 = locations
+        .iter()
+        .map(|pos| get_temperature(pos[0], pos[1]))
         .flatten()
         .sum();
     Some(Beacon {
