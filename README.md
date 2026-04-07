@@ -1,6 +1,7 @@
 <div align="center">
     <h1>WeatherCoin</h1>
 </div>
+
 WeatherCoin is a decentralized currency that relies on the randomness of the weather and cryptographic proofs as its foundation.
 
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
