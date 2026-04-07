@@ -14,10 +14,44 @@ WeatherCoin is a decentralized currency that relies on the randomness of the wea
 - ⛅ Consensus by Weather - Weather data enables rapid consensus building
 - ⚡ Highly energy-efficient - Because VDF is used instead of Proof of Work, it is more energy-efficient
 
-## How does it work?
+## :dart: How does it work?
 Weather is a source of information where, regardless of who observes it, relatively consistent readings are obtained at the same time; however, it is impossible to predict its changes with absolute accuracy. By incorporating this characteristic of weather into the consensus mechanism of a decentralized system, we can create a currency that does not require proof-of-work.
 
-## Locations which is collected temperature data
+## :rocket: Get started
+### Installation
+```bash
+# Clone the repository (or Download ZIP)
+$ git clone git@github.com:kotagit75/WeatherCoin.git
+
+# Navigate to the project directory
+$ cd WeatherCoin
+
+# build
+$ cargo build --release
+```
+### Usage
+```bash
+# run
+$ ./target/release/weather-coin
+
+# get state
+$ curl localhost:8080/state
+
+# get balance
+$ curl localhost:8080/balance
+
+# send transaction
+$ curl -X POST -H "Content-Type: application/json" -d "{'recipient':'{address}', 'amount': {amount}}" localhost:8080/tx
+
+# mine a block
+$ curl -X POST localhost:8080/mine
+
+# add peer
+$ curl -X POST -H "Content-Type: application/json" -d '{"ip":"{IP Addr}"}' localhost:8080/peer
+
+```
+
+## 📍 Locations which is collected temperature data
 WeatherCoin gets temperature data from multiple regions. The regions are as follows:
 ```geojson
 {
