@@ -65,6 +65,16 @@ $ curl -X POST -H "Content-Type: application/json" -d '{"ip":"{IP Addr}"}' local
 
 ## 📍 Locations which is collected temperature data
 WeatherCoin gets temperature data from multiple regions. The regions are as follows:
+- Fukuoka `130.4016888888889, 33.59018333333334`
+- Hakodate `140.7290611111111, 41.76869722222222`
+- Yokohama `139.6379638888889, 35.443675`
+- Kyoto `135.76815, 35.01156388888889`
+- Sendai `140.8694166666667, 38.26819444444445`
+- Kobe `135.1956305555556, 34.69008055555555`
+- Nagoya `136.9065583333334, 35.18145`
+- Hiroshima `132.4553055555556, 34.38528888888889`
+- Hirosaki `140.4845583333333, 40.599217`
+- Kagoshima `130.55, 31.5667`
 ```geojson
 {
   "type": "FeatureCollection",
