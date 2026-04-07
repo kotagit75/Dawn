@@ -3,11 +3,11 @@
 </div>
 WeatherCoin is a decentralized currency that relies on the randomness of the weather and cryptographic proofs as its foundation.
 
-> [!NOTE]
-> WeatherCoin is currently in active development. The API and features may change without notice.
-
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 ![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)
+
+> [!NOTE]
+> WeatherCoin is currently in active development. The API and features may change without notice.
 
 ## :sparkles: Features
 - ⛅ Consensus by Weather - Weather data enables rapid consensus building
