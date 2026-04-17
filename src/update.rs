@@ -43,13 +43,15 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
             );
         }
         Event::AddTransaction(recipient, amount) => {
-            if let Some(Ok(transaction)) = state.chain.generate_transaction(
+            if let Ok(Some(transaction)) = state.chain.generate_transaction(
                 &state.address,
                 &recipient,
                 amount,
                 &state.secret_key,
             ) {
+                println!("52");
                 let (state, changed) = state.add_to_transaction(&transaction);
+                println!("54");
                 return (state, {
                     if changed {
                         vec![Effect::BroadcastResponseTransactions(vec![

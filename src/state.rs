@@ -29,10 +29,11 @@ impl State {
 
     pub fn add_to_transaction(&self, transaction: &Transaction) -> (Self, bool) {
         if !(transaction.is_valid()
-            && self
-                .chain
-                .find_unspent_transaction(transaction.un_spent_id)
-                .is_some())
+            && transaction.tx_in.iter().all(|tx_in| {
+                self.chain
+                    .find_unspent_transaction(tx_in.unspent_id)
+                    .is_some()
+            }))
         {
             return (self.clone(), false);
         }

@@ -11,12 +11,16 @@ pub struct TransactionOut {
     pub address: Address,
     pub amount: u64,
 }
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct TransactionIn {
+    pub unspent_id: u64,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
     pub sender: Address,
     pub out: Vec<TransactionOut>,
-    pub un_spent_id: u64,
+    pub tx_in: Vec<TransactionIn>,
     pub signature: Signature,
 }
 
@@ -67,32 +71,33 @@ impl Transaction {
     pub fn new(
         sender: Address,
         out: Vec<TransactionOut>,
-        un_spent_id: u64,
+        tx_in: Vec<TransactionIn>,
         signature: Signature,
     ) -> Self {
         Self {
             sender,
             out,
-            un_spent_id,
+            tx_in,
             signature,
         }
     }
     pub fn new_with_creating_signature(
         sender: &Address,
         out: Vec<TransactionOut>,
-        un_spent_id: u64,
+        tx_in: Vec<TransactionIn>,
         sk: &SK,
     ) -> Result<Self, ErrorStack> {
         Ok(Self {
             sender: sender.clone(),
             out: out.clone(),
-            un_spent_id,
-            signature: create_transaction_signature(sender, &out, un_spent_id, sk)?,
+            tx_in: tx_in.clone(),
+            signature: create_transaction_signature(sender, &out, tx_in, sk)?,
         })
     }
     pub fn verify_signature(&self) -> bool {
         self.sender.clone().verify(
-            transacction_to_buf_for_signature(&self.sender, &self.out, self.un_spent_id).as_slice(),
+            transacction_to_buf_for_signature(&self.sender, &self.out, self.tx_in.clone())
+                .as_slice(),
             &self.signature,
         )
     }
@@ -113,7 +118,12 @@ impl Transaction {
                     acc.push(unspent);
                     (acc, new_id)
                 });
-        new_unspent.retain(|unspent| unspent.id != self.un_spent_id);
+        new_unspent.retain(|unspent| {
+            !self
+                .tx_in
+                .iter()
+                .any(|tx_in| tx_in.unspent_id == unspent.id)
+        });
         (new_unspent, new_id)
     }
 
@@ -131,18 +141,18 @@ impl Transaction {
 fn transacction_to_buf_for_signature(
     sender: &Address,
     out: &[TransactionOut],
-    un_spent_id: u64,
+    tx_in: Vec<TransactionIn>,
 ) -> Vec<u8> {
-    format!("{sender}{out:?}{un_spent_id}").as_bytes().to_vec()
+    format!("{sender}{out:?}{tx_in:?}").as_bytes().to_vec()
 }
 
 fn create_transaction_signature(
     sender: &Address,
     out: &[TransactionOut],
-    un_spent_id: u64,
+    tx_in: Vec<TransactionIn>,
     sk: &SK,
 ) -> Result<Signature, ErrorStack> {
-    let data = transacction_to_buf_for_signature(sender, out, un_spent_id);
+    let data = transacction_to_buf_for_signature(sender, out, tx_in);
     sk.sign(&data)
 }
 
@@ -177,18 +187,43 @@ pub fn coinbase_transaction(address: &Address) -> Transaction {
             address: address.clone(),
             amount: COINBASE_AMOUNT,
         }],
-        un_spent_id: 0,
+        tx_in: Vec::new(),
         signature: Signature::default(),
     }
 }
 
 pub fn is_valid_coinbase_transaction(transaction: &Transaction) -> bool {
     transaction.sender == coinbase_address()
-        && transaction.un_spent_id == 0
+        && transaction.tx_in.len() == 0
         && transaction.out.len() == 1
         && transaction.out[0].amount == COINBASE_AMOUNT
         && transaction
             .out
             .iter()
             .all(|txout| is_valid_address(&txout.address))
+}
+
+pub fn flex_unspent_transactions(
+    target_amount: u64,
+    unspent_transactions: Vec<UnspentTransaction>,
+) -> Vec<UnspentTransaction> {
+    unspent_transactions
+        .iter()
+        .fold(
+            (0, Vec::new()),
+            |(amount, use_unspent), unspent_transaction| {
+                if amount >= target_amount {
+                    return (amount, use_unspent);
+                }
+                (
+                    amount + unspent_transaction.amount,
+                    use_unspent
+                        .iter()
+                        .chain([unspent_transaction])
+                        .cloned()
+                        .collect(),
+                )
+            },
+        )
+        .1
 }

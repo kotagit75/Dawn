@@ -6,7 +6,10 @@ use crate::{
     blockchain::{
         address::Address,
         block::{Block, genesis_block, solve_block_vdf},
-        transaction::{Transaction, UnspentTransaction, get_transaction_out},
+        transaction::{
+            Transaction, TransactionIn, UnspentTransaction, flex_unspent_transactions,
+            get_transaction_out,
+        },
     },
     util::key::SK,
 };
@@ -127,19 +130,32 @@ impl Chain {
         recipient: &Address,
         amount: u64,
         secret_key: &SK,
-    ) -> Option<Result<Transaction, ErrorStack>> {
+    ) -> Result<Option<Transaction>, ErrorStack> {
         let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
+        let my_unspent_transactions: Vec<UnspentTransaction> = unspent_transactions
             .iter()
-            .find(|tx| &tx.address == sender)
-            .map(|unspent_transaction| {
-                Transaction::new_with_creating_signature(
-                    sender,
-                    get_transaction_out(sender, recipient, amount, unspent_transaction.amount),
-                    unspent_transaction.id,
-                    secret_key,
-                )
-            })
+            .filter(|tx| &tx.address == sender)
+            .cloned()
+            .collect();
+        let use_unspent = flex_unspent_transactions(amount, my_unspent_transactions);
+        if use_unspent.is_empty() {
+            return Ok(None);
+        }
+        let transaction = Transaction::new_with_creating_signature(
+            sender,
+            get_transaction_out(
+                sender,
+                recipient,
+                amount,
+                use_unspent.iter().map(|tx| tx.amount).sum(),
+            ),
+            use_unspent
+                .iter()
+                .map(|tx| TransactionIn { unspent_id: tx.id })
+                .collect(),
+            secret_key,
+        )?;
+        Ok(Some(transaction))
     }
 
     pub fn get_balance(&self, address: &Address) -> u64 {
