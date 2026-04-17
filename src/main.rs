@@ -20,7 +20,7 @@ async fn main() {
         println!("failed to load node key");
         return;
     };
-    println!("initializing node key");
+    println!("initializing state");
     let Ok(mut state) = state::State::new(sk) else {
         println!("failed to initialize state");
         return;
