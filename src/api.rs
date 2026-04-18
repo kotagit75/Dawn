@@ -13,6 +13,7 @@ const API_PORT: u32 = 8080;
 pub async fn init_api(event_tx: mpsc::Sender<Event>, state_rx: watch::Receiver<State>) {
     let app = Router::new()
         .route("/state", get(handle_get_state))
+        .route("/address", get(handle_get_address))
         .route("/balance", get(handle_get_balance))
         .route("/balance/{address}", get(handle_get_balance_with_address))
         .route("/tx", post(handle_post_transaction))
@@ -31,6 +32,13 @@ async fn handle_get_state(
 ) -> response::Json<State> {
     response::Json(state_rx.borrow().clone())
 }
+
+async fn handle_get_address(
+    extract::State((_, state_rx)): extract::State<(mpsc::Sender<Event>, watch::Receiver<State>)>,
+) -> String {
+    state_rx.borrow().clone().address.der
+}
+
 async fn handle_get_balance(
     extract::State((_, state_rx)): extract::State<(mpsc::Sender<Event>, watch::Receiver<State>)>,
 ) -> response::Json<u64> {
