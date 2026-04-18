@@ -1,14 +1,14 @@
 <div align="center">
-    <h1>WeatherCoin</h1>
+    <h1>Dawn</h1>
 </div>
 
-WeatherCoin is a decentralized currency that relies on the randomness of the weather and cryptographic proofs as its foundation.
+Dawn is a decentralized currency that relies on the randomness of the weather and cryptographic proofs as its foundation.
 
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 ![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)
 
 > [!NOTE]
-> WeatherCoin is currently in active development. The API and features may change without notice.
+> Dawn is currently in active development. The API and features may change without notice.
 
 ## :sparkles: Features
 - ⛅ Consensus by Weather - Weather data enables rapid consensus building
@@ -17,15 +17,15 @@ WeatherCoin is a decentralized currency that relies on the randomness of the wea
 ## :dart: How does it work?
 Weather is a source of information where, regardless of who observes it, relatively consistent readings are obtained at the same time; however, it is impossible to predict its changes with absolute accuracy. By incorporating this characteristic of weather into the consensus mechanism of a decentralized system, we can create a currency that does not require proof-of-work.
 
-Here, data that is difficult to predict is referred to as a “beacon.” WeatherCoin uses a hash chain composed of linked blocks. In addition to transactions, each block contains the beacon and the results of VDF calculations. Because the value of the beacon is difficult to predict, it is challenging to generate future blocks. Furthermore, the hash chain is employed to prevent the generation of blocks using past beacon values.
+Here, data that is difficult to predict is referred to as a “beacon.” Dawn uses a hash chain composed of linked blocks. In addition to transactions, each block contains the beacon and the results of VDF calculations. Because the value of the beacon is difficult to predict, it is challenging to generate future blocks. Furthermore, the hash chain is employed to prevent the generation of blocks using past beacon values.
 ## :rocket: Get started
 ### Installation
 ```bash
 # Clone the repository (or Download ZIP)
-git clone git@github.com:kotagit75/WeatherCoin.git
+git clone git@github.com:kotagit75/Dawn.git
 
 # Navigate to the project directory
-cd WeatherCoin
+cd Dawn
 
 # build
 cargo build --release
@@ -63,7 +63,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"ip":"{IP Addr}"}' localho
 ```
 
 ## 📍 Locations which is collected temperature data
-WeatherCoin gets temperature data from multiple regions. The regions are as follows:
+Dawn gets temperature data from multiple regions. The regions are as follows:
 - Hakodate `140.7290611111111, 41.76869722222222`
 - Hirosaki `140.4845583333333, 40.599217`
 - Sendai `140.8694166666667, 38.26819444444445`
