@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./assets/bg.jpg" width="50%" />
+    <img src="./assets/bg.jpg"/>
     <h1>Dawn</h1>
 </div>
 
