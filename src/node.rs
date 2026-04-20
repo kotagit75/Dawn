@@ -11,24 +11,24 @@ const NODE_KEY_PATH: &str = "node/key.der";
 
 pub fn load_key() -> Result<SK, ()> {
     if std::fs::metadata(NODE_DIR_PATH).is_err() {
-        println!("creating node directory");
+        info!("creating node directory");
         std::fs::create_dir(NODE_DIR_PATH).map_err(|_| {
-            println!("failed to create node directory");
+            error!("failed to create node directory");
             ()
         })?;
     }
     if std::fs::metadata(NODE_KEY_PATH).is_ok() {
-        println!("reading node key");
+        info!("reading node key");
         read_key().map_err(|_| {
-            println!("failed to read node key");
+            error!("failed to read node key");
             ()
         })
     } else {
-        println!("generating node key");
+        info!("generating node key");
         match generate_pk_and_sk(NODE_KEY_BITS) {
             Ok((_, sk)) => {
                 save_key(&sk).map_err(|_| {
-                    println!("failed to save node key");
+                    error!("failed to save node key");
                     ()
                 })?;
                 Ok(sk)

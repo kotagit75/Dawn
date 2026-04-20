@@ -1,5 +1,10 @@
+#[macro_use]
+extern crate log;
+extern crate simple_logger as logger;
+
 extern crate regex;
 
+use log::Level;
 use tokio::sync::{mpsc, watch};
 
 use crate::update::{run_effect, update};
@@ -15,17 +20,19 @@ pub mod util;
 
 #[tokio::main]
 async fn main() {
-    println!("loading node key");
+    logger::init_with_level(Level::Info).unwrap();
+
+    info!("loading node key");
     let Ok(sk) = node::load_key() else {
-        println!("failed to load node key");
+        error!("failed to load node key");
         return;
     };
-    println!("initializing state");
+    info!("initializing state");
     let Ok(mut state) = state::State::new(sk) else {
-        println!("failed to initialize state");
+        error!("failed to initialize state");
         return;
     };
-    println!("address: {:?}", state.address.der);
+    debug!("address: {:?}", state.address.der);
 
     let (event_tx, mut event_rx) = mpsc::channel(256);
     let (state_tx, state_rx) = watch::channel(state.clone());

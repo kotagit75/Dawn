@@ -28,7 +28,7 @@ pub async fn init_api(event_tx: mpsc::Sender<Event>, state_rx: watch::Receiver<S
     ))
     .await
     .unwrap();
-    println!("API server is running on http://localhost:{}", API_PORT);
+    info!("API server is running on http://localhost:{}", API_PORT);
     axum::serve(listener, app).await.unwrap();
 }
 

@@ -20,7 +20,7 @@ pub async fn init_p2p(event_tx: mpsc::Sender<Event>) {
     ))
     .await
     .unwrap();
-    println!("P2P server is running on http://localhost:{}", P2P_PORT);
+    info!("P2P server is running on http://localhost:{}", P2P_PORT);
     axum::serve(listener, app).await.unwrap();
 }
 
