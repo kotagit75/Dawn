@@ -1,3 +1,5 @@
+use std::net::{Ipv4Addr, SocketAddr};
+
 use axum::{
     Router,
     extract::{self, Path},
@@ -9,7 +11,7 @@ use tokio::sync::{mpsc, watch};
 
 use crate::{blockchain::address::Address, p2p::Peer, state::State, update::Event, util::key::PK};
 
-const API_PORT: u32 = 8080;
+const API_PORT: u16 = 8080;
 pub async fn init_api(event_tx: mpsc::Sender<Event>, state_rx: watch::Receiver<State>) {
     let app = Router::new()
         .route("/state", get(handle_get_state))
@@ -20,9 +22,12 @@ pub async fn init_api(event_tx: mpsc::Sender<Event>, state_rx: watch::Receiver<S
         .route("/mine", post(handle_post_mine))
         .route("/peer", post(handle_post_peer))
         .with_state((event_tx, state_rx));
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", API_PORT))
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(SocketAddr::new(
+        std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+        API_PORT,
+    ))
+    .await
+    .unwrap();
     println!("API server is running on http://localhost:{}", API_PORT);
     axum::serve(listener, app).await.unwrap();
 }

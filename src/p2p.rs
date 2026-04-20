@@ -1,3 +1,5 @@
+use std::net::{Ipv4Addr, SocketAddr};
+
 use axum::{Router, extract, response, routing::post};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -7,14 +9,17 @@ use crate::{
     update::Event,
 };
 
-const P2P_PORT: u32 = 62697;
+const P2P_PORT: u16 = 62697;
 pub async fn init_p2p(event_tx: mpsc::Sender<Event>) {
     let app = Router::new()
         .route("/", post(handle_post_message))
         .with_state(event_tx);
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", P2P_PORT))
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(SocketAddr::new(
+        std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+        P2P_PORT,
+    ))
+    .await
+    .unwrap();
     println!("P2P server is running on http://localhost:{}", P2P_PORT);
     axum::serve(listener, app).await.unwrap();
 }
