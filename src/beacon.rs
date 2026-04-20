@@ -10,21 +10,23 @@ pub struct Beacon {
     pub value: f32,
 }
 
-fn get_temperature(lon: f64, lat: f64) -> Option<f32> {
+fn run_command_and_get_exit_code(command: &mut Command) -> Option<i32> {
     match current_dir() {
         Ok(x) => {
-            let status = Command::new("beacon/temperature.sh")
-                .arg(lat.to_string())
-                .arg(lon.to_string())
-                .current_dir(x)
-                .status();
-            status
-                .ok()
-                .and_then(|status| status.code())
-                .map(|code| code as f32 / 10.0)
+            let status = command.current_dir(x).status();
+            status.ok().and_then(|status| status.code())
         }
         Err(_) => None,
     }
+}
+
+fn get_temperature(lon: f64, lat: f64) -> Option<f32> {
+    let code = run_command_and_get_exit_code(
+        Command::new("beacon/temperature.sh")
+            .arg(lat.to_string())
+            .arg(lon.to_string()),
+    );
+    code.map(|code| code as f32 / 10.0)
 }
 
 fn calc_locations(lastest_block_hash: &Hashed) -> Vec<geojson::Position> {
