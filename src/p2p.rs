@@ -49,7 +49,10 @@ impl Peer {
         Self { ip }
     }
     pub fn get_url(&self) -> String {
-        format!("http://{}:{}/", self.ip, P2P_PORT)
+        format!(
+            "http://{}/",
+            SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), P2P_PORT,)
+        )
     }
     pub async fn write(&self, message: &P2PMessage) {
         let _ = reqwest::Client::new()
