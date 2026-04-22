@@ -45,15 +45,12 @@ async fn main() {
         p2p::init_p2p(event_tx_clone).await;
     });
 
-    while let Some((new_state, effects)) = event_rx.recv().await.map(|event| update(event, state)) {
+    while let Some((new_state, effect)) = event_rx.recv().await.map(|event| update(event, state)) {
         state = new_state.clone();
         let _ = state_tx.send(state.clone());
-        for effect in effects {
-            let state_clone = new_state.clone();
-            let event_tx_clone = event_tx.clone();
-            tokio::spawn(async move {
-                run_effect(state_clone, event_tx_clone, effect).await;
-            });
-        }
+        let event_tx_clone = event_tx.clone();
+        tokio::spawn(async move {
+            run_effect(new_state, event_tx_clone, effect).await;
+        });
     }
 }

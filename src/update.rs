@@ -24,13 +24,14 @@ pub enum Event {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Effect {
+    None,
     MineBlock(Vec<Transaction>),
     BroadcastQueryAll,
     BroadcastResponseBlocks(Vec<Block>),
     BroadcastResponseTransactions(Vec<Transaction>),
 }
 
-pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
+pub fn update(event: Event, state: State) -> (State, Effect) {
     match event {
         Event::AddPeer(peer) => {
             info!("added peer: {}", peer.ip);
@@ -40,7 +41,7 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
                     peers: new_peers,
                     ..state
                 },
-                Vec::new(),
+                Effect::None,
             );
         }
         Event::AddTransaction(recipient, amount) => {
@@ -53,11 +54,9 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
                 let (state, changed) = state.add_to_transaction(&transaction);
                 return (state, {
                     if changed {
-                        vec![Effect::BroadcastResponseTransactions(vec![
-                            transaction.clone(),
-                        ])]
+                        Effect::BroadcastResponseTransactions(vec![transaction.clone()])
                     } else {
-                        Vec::new()
+                        Effect::None
                     }
                 });
             };
@@ -74,7 +73,7 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
                     transactions: Vec::new(),
                     ..state
                 },
-                vec![Effect::MineBlock(blocks_for_mine)],
+                Effect::MineBlock(blocks_for_mine),
             );
         }
         Event::CompletedMineBlock(new_block) => {
@@ -87,29 +86,27 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
             };
             return (new_state, {
                 if changed {
-                    vec![Effect::BroadcastResponseBlocks(vec![new_block])]
+                    Effect::BroadcastResponseBlocks(vec![new_block])
                 } else {
-                    Vec::new()
+                    Effect::None
                 }
             });
         }
         Event::P2PMessage(P2PMessage::QueryAll) => {
             return (
                 state.clone(),
-                vec![Effect::BroadcastResponseBlocks(state.chain.blocks.clone())],
+                Effect::BroadcastResponseBlocks(state.chain.blocks.clone()),
             );
         }
         Event::P2PMessage(P2PMessage::QueryLatest) => {
             return (
                 state.clone(),
-                vec![Effect::BroadcastResponseBlocks(vec![
-                    state.chain.get_latest_block(),
-                ])],
+                Effect::BroadcastResponseBlocks(vec![state.chain.get_latest_block()]),
             );
         }
         Event::P2PMessage(P2PMessage::ResponseBlockChain(blocks)) => {
             let Some(received_lastest_block) = blocks.last() else {
-                return (state, Vec::new());
+                return (state, Effect::None);
             };
             let held_lastest_block = state.chain.get_latest_block();
             if received_lastest_block.index > held_lastest_block.index {
@@ -123,23 +120,23 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
                         },
                         {
                             if changed {
-                                vec![Effect::BroadcastResponseBlocks(vec![
+                                Effect::BroadcastResponseBlocks(vec![
                                     received_lastest_block.clone(),
-                                ])]
+                                ])
                             } else {
-                                Vec::new()
+                                Effect::None
                             }
                         },
                     );
                 } else if blocks.len() == 1 {
-                    return (state, vec![Effect::BroadcastQueryAll]);
+                    return (state, Effect::BroadcastQueryAll);
                 } else {
                     return (
                         State {
                             chain: state.chain.replace(Chain { blocks }),
                             ..state
                         },
-                        Vec::new(),
+                        Effect::None,
                     );
                 }
             }
@@ -147,9 +144,7 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
         Event::P2PMessage(P2PMessage::QueryTransactions) => {
             return (
                 state.clone(),
-                vec![Effect::BroadcastResponseTransactions(
-                    state.transactions.clone(),
-                )],
+                Effect::BroadcastResponseTransactions(state.transactions.clone()),
             );
         }
         Event::P2PMessage(P2PMessage::ResponseTransactions(transactions)) => {
@@ -162,20 +157,19 @@ pub fn update(event: Event, state: State) -> (State, Vec<Effect>) {
                     });
             return (state.clone(), {
                 if changed {
-                    vec![Effect::BroadcastResponseTransactions(
-                        state.transactions.clone(),
-                    )]
+                    Effect::BroadcastResponseTransactions(state.transactions.clone())
                 } else {
-                    Vec::new()
+                    Effect::None
                 }
             });
         }
     }
-    (state, Vec::new())
+    (state, Effect::None)
 }
 
 pub async fn run_effect(state: State, event_tx: mpsc::Sender<Event>, effect: Effect) {
     match effect {
+        Effect::None => {}
         Effect::MineBlock(transactions) => {
             info!("start mining block");
             let Some(beacon) = get_beacon(
