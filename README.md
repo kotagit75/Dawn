@@ -19,7 +19,7 @@ Dawn is a decentralized currency that relies on the randomness of the weather an
 ## :dart: How does it work?
 Weather is a source of information where, regardless of who observes it, relatively consistent readings are obtained at the same time; however, it is impossible to predict its changes with absolute accuracy. By incorporating this characteristic of weather into the consensus mechanism of a decentralized system, we can create a currency that does not require proof-of-work.
 
-Here, data that is difficult to predict is referred to as a “beacon.” Dawn uses a hash chain composed of linked blocks. In addition to transactions, each block contains the beacon and the results of VDF calculations. Because the value of the beacon is difficult to predict, it is challenging to generate future blocks. Furthermore, the hash chain is employed to prevent the generation of blocks using past beacon values.
+Here, data that is difficult to predict is referred to as a "beacon." Dawn uses a hash chain composed of linked blocks. In addition to transactions, each block contains the beacon and the results of VDF calculations. Because the value of the beacon is difficult to predict, it is challenging to generate future blocks. Furthermore, the hash chain is employed to prevent the generation of blocks using past beacon values.
 ## :rocket: Get started
 ### Installation
 ```bash
