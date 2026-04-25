@@ -38,7 +38,7 @@ Create a shell script named `beacon/temperature.sh`.This script retrieves the la
 ```bash
 #!/bin/bash
 temperature=$(curl "https://example.com/api?latitude=$1&longitude=$2")
-exit $(echo "scale=1; $temperature * 10" | bc | sed s/\.[0-9,]*$//g)
+exit $(echo "scale=1; $temperature * 10" | bc | sed s/\.[0-9,]*$//g) # Multiply the value up to the first decimal place by 10 and return it as the exit code
 ```
 Even without using an API, it is possible to conduct observations by placing sensors on-site, for example.
 ### Usage
