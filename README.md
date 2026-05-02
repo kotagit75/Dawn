@@ -34,11 +34,12 @@ cargo build --release
 ```bash
 mkdir beacon
 ```
-Create a shell script named `beacon/temperature.sh`.This script retrieves the latitude and longitude and returns the temperature at that location as an exit code.It doesn't matter how you implement it. Here is an example. Note that this API does not actually exist.
+Create a shell script named `beacon/temperature.sh`.This script retrieves the latitude and longitude and returns the temperature at that location as `stdout`.It doesn't matter how you implement it. Here is an example. Note that this API does not actually exist.
 ```bash
 #!/bin/bash
 temperature=$(curl "https://example.com/api?latitude=$1&longitude=$2")
-exit $(echo "scale=1; $temperature * 10" | bc | sed s/\.[0-9,]*$//g) # Multiply the value up to the first decimal place by 10 and return it as the exit code
+echo -n $temperature
+exit 0
 ```
 Even without using an API, it is possible to conduct observations by placing sensors on-site, for example.
 ### Usage

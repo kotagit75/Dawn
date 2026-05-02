@@ -3,7 +3,7 @@ use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::{command::run_command_and_get_exit_code, hash::Hashed};
+use crate::util::{command::run_command_and_get_output, hash::Hashed};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Beacon {
@@ -14,10 +14,10 @@ const TEMPERATURE_SCRIPT_PATH: &str = "beacon/temperature.sh";
 const TARGET_GEOJSON: &str = include_str!("beacon/target.geojson");
 
 fn get_temperature(lon: f64, lat: f64) -> Option<f32> {
-    let code = run_command_and_get_exit_code(
+    let output = run_command_and_get_output(
         Command::new(TEMPERATURE_SCRIPT_PATH).args([lat.to_string(), lon.to_string()]),
     );
-    code.map(|code| code as f32 / 10.0)
+    output.map(|str| str.parse::<f32>().ok()).flatten()
 }
 
 fn calc_locations(lastest_block_hash: &Hashed) -> Vec<geojson::Position> {

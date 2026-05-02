@@ -1,10 +1,16 @@
 use std::{env::current_dir, process::Command};
 
-pub fn run_command_and_get_exit_code(command: &mut Command) -> Option<i32> {
+pub fn run_command_and_get_output(command: &mut Command) -> Option<String> {
     match current_dir() {
         Ok(x) => {
-            let status = command.current_dir(x).status();
-            status.ok().and_then(|status| status.code())
+            let output = command.current_dir(x).output();
+            output.ok().and_then(|output| {
+                if output.status.success() {
+                    Some(String::from_utf8_lossy(&output.stdout).into_owned())
+                } else {
+                    None
+                }
+            })
         }
         Err(_) => None,
     }
