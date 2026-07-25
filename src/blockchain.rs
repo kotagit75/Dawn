@@ -4,3 +4,4 @@ pub mod chain;
 pub mod coinbase;
 pub mod transaction;
 pub mod utxo;
+pub mod validation;

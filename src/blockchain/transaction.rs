@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     blockchain::{
-        address::{Address, is_valid_address},
+        address::Address,
         utxo::{TransactionIn, TransactionOut, UnspentTransaction},
     },
     util::{key::SK, signature::SignatureWrapper},
@@ -85,7 +85,7 @@ impl Transaction {
     /*
      * This method calculates the total amount of the transaction input.
      */
-    fn calc_total_input_amount(&self, unspent_transactions: &[UnspentTransaction]) -> u64 {
+    pub fn calc_total_input_amount(&self, unspent_transactions: &[UnspentTransaction]) -> u64 {
         self.tx_in
             .iter()
             .flat_map(|tx_in| tx_in.get_amount(unspent_transactions))
@@ -131,21 +131,6 @@ impl Transaction {
                 .collect(),
             first_id + 1,
         )
-    }
-
-    pub fn is_valid(&self, unspent_transactions: &[UnspentTransaction]) -> bool {
-        self.verify_signature()
-            && self.total_amount() > 0
-            && is_valid_address(&self.sender)
-            && self
-                .out
-                .iter()
-                .all(|txout| is_valid_address(&txout.address))
-            && self.calc_total_input_amount(unspent_transactions) == self.total_amount()
-            && self
-                .tx_in
-                .iter()
-                .all(|tx_in| tx_in.get_amount(unspent_transactions).is_some())
     }
 }
 

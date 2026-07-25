@@ -12,6 +12,7 @@ use crate::{
             UnspentTransaction, flex_unspent_transactions, get_transaction_out,
             transactions_to_unspent_ids,
         },
+        validation::is_valid_new_block,
     },
     util::key::SK,
 };
@@ -76,20 +77,6 @@ impl Chain {
         block_data: BlockDataOwned,
     ) -> Block {
         Block::new_with_creating_signature(&block_data.as_borrowed(), vdf_solution, sk)
-    }
-
-    pub fn is_valid(&self, cache: &dyn BeaconCache) -> bool {
-        let is_valid_genesis_block = self.blocks.first().cloned() == Some(genesis_block());
-        let is_valid_chain = self.blocks.windows(2).all(|windows| {
-            is_valid_new_block(
-                &windows[1],
-                &windows[0],
-                &self.get_unspent_transactions().0,
-                self.get_block_depth(&windows[1]),
-                cache,
-            )
-        });
-        is_valid_genesis_block && is_valid_chain
     }
 
     pub fn replace(&self, new_chain: Chain, cache: &dyn BeaconCache) -> Self {
@@ -225,29 +212,6 @@ impl Chain {
             .map(|tx| tx.amount)
             .sum()
     }
-}
-
-pub fn is_valid_new_block(
-    block: &Block,
-    previous_block: &Block,
-    unspent_transactions: &[UnspentTransaction],
-    block_depth: usize,
-    cache: &dyn BeaconCache,
-) -> bool {
-    let beacon_ok = if block_depth > CHECKPOINT_DEPTH {
-        true
-    } else {
-        let Some(beacon) = cache.get(&BeaconKey::new(&previous_block.hash, block.timestamp)) else {
-            return false;
-        };
-        is_valid_beacon(&beacon, &block.beacon)
-    };
-    block.index == previous_block.index + 1
-        && block.timestamp > previous_block.timestamp
-        && block.previous_hash == previous_block.hash
-        && block.calculate_hash() == block.hash
-        && block.is_valid(unspent_transactions)
-        && beacon_ok
 }
 
 #[cfg(test)]

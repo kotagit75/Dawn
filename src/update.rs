@@ -3,10 +3,11 @@ use std::{time, vec};
 use crate::{
     beacon::{BeaconCache, fetch_beacon, prefetch_beacon},
     blockchain::{
-        address::{Address, is_valid_address},
+        address::Address,
         block::{Block, MAX_TRANSACTIONS_PER_BLOCK, solve_block_vdf},
         chain::{CHECKPOINT_DEPTH, Chain},
         transaction::Transaction,
+        validation::is_valid_address,
     },
     p2p::{P2PMessage, Peer, broadcast},
     state::State,
