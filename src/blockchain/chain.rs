@@ -2,19 +2,13 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    beacon::{Beacon, BeaconCache, BeaconKey, is_valid_beacon},
+    beacon::{BeaconCache, BeaconKey, is_valid_beacon},
     blockchain::{
         address::Address,
-        block::{Block, BlockData, BlockDataOwned, genesis_block},
-        coinbase::coinbase_transaction,
-        transaction::Transaction,
-        utxo::{
-            UnspentTransaction, flex_unspent_transactions, get_transaction_out,
-            transactions_to_unspent_ids,
-        },
+        block::{Block, genesis_block},
+        utxo::UnspentTransaction,
         validation::is_valid_new_block,
     },
-    util::key::SK,
 };
 
 // For blocks older than CHECKPOINT_DEPTH, temperature verification is omitted.
@@ -43,40 +37,6 @@ impl Chain {
             Some(block) => block.clone(),
             None => genesis_block(),
         }
-    }
-
-    pub fn generate_next_block_data(
-        &self,
-        issuer: &Address,
-        beacon: Beacon,
-        transactions_without_coinbase: Vec<Transaction>,
-        next_timestamp: i64,
-    ) -> BlockDataOwned {
-        let previous_block: Block = self.get_latest_block();
-        let next_index: u64 = previous_block.index + 1;
-        let transactions = [coinbase_transaction(issuer, next_index)]
-            .iter()
-            .chain(&transactions_without_coinbase)
-            .cloned()
-            .collect::<Vec<Transaction>>();
-        BlockData::new(
-            next_index,
-            next_timestamp,
-            &transactions,
-            &beacon,
-            issuer,
-            previous_block.hash,
-        )
-        .to_owned()
-    }
-
-    pub fn generate_next_block(
-        &self,
-        sk: &SK,
-        vdf_solution: Vec<u8>,
-        block_data: BlockDataOwned,
-    ) -> Block {
-        Block::new_with_creating_signature(&block_data.as_borrowed(), vdf_solution, sk)
     }
 
     pub fn replace(&self, new_chain: Chain, cache: &dyn BeaconCache) -> Self {
@@ -169,41 +129,6 @@ impl Chain {
             .collect()
     }
 
-    pub fn generate_transaction(
-        &self,
-        sender: &Address,
-        recipient: &Address,
-        send_amount: u64,
-        secret_key: &SK,
-        used_transactions: &[Transaction],
-        fee: u64,
-    ) -> Option<Transaction> {
-        let amount = send_amount + fee;
-
-        let mut filtered_unspent_transactions = self.filter_unspent_transactions_by_address(sender);
-        let used_unspent_ids: Vec<u64> = transactions_to_unspent_ids(used_transactions);
-        filtered_unspent_transactions.retain(|tx| !used_unspent_ids.contains(&tx.id));
-        let use_unspent = flex_unspent_transactions(amount, filtered_unspent_transactions);
-        if use_unspent.is_empty() {
-            return None;
-        }
-
-        let transaction = Transaction::new_with_creating_signature(
-            sender,
-            get_transaction_out(
-                sender,
-                recipient,
-                send_amount,
-                fee,
-                use_unspent.iter().map(|tx| tx.amount).sum::<u64>(),
-            ),
-            use_unspent.iter().map(|tx| tx.to_txin()).collect(),
-            fee,
-            secret_key,
-        );
-        Some(transaction)
-    }
-
     pub fn get_balance(&self, address: &Address) -> u64 {
         let (unspent_transactions, _) = self.get_unspent_transactions();
         unspent_transactions
@@ -220,6 +145,7 @@ mod tests {
     use crate::beacon::{Beacon, InMemoryBeaconCache};
     use crate::blockchain::block::{Block, genesis_block};
     use crate::blockchain::coinbase::coinbase_transaction;
+    use crate::blockchain::transaction::Transaction;
     use crate::blockchain::utxo::TransactionIn;
     use crate::util::key::{SK, generate_sk};
     use crate::util::signature::SignatureWrapper;
