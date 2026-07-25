@@ -11,13 +11,13 @@ pub fn handle_add_transaction(
     send_amount: u64,
     fee: u64,
 ) -> (State, Effect) {
-    if !is_valid_address(&recipient) {
+    if !is_valid_address(recipient) {
         info!("invalid recipient address: {}", recipient.der);
         return (state, Effect::None);
     }
     if let Some(transaction) = state.chain.generate_transaction(
         &state.address,
-        &recipient,
+        recipient,
         send_amount,
         &state.secret_key,
         &state.transactions,
@@ -29,13 +29,14 @@ pub fn handle_add_transaction(
         } else {
             error!("failed to add transaction: {:?}", transaction);
         }
-        return (
+        (
             state,
             map_effect(
                 || Effect::Broadcast(P2PMessage::ResponseTransactions(vec![transaction])),
                 changed,
             ),
-        );
+        )
+    } else {
+        (state, Effect::None)
     }
-    return (state, Effect::None);
 }

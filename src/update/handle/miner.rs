@@ -14,13 +14,13 @@ pub fn handle_mine_block(state: State) -> (State, Effect) {
         std::cmp::min(MAX_TRANSACTIONS_PER_BLOCK, sorted_transactions.len()),
     );
 
-    return (
+    (
         State {
             transactions: remaining_transactions.to_vec(),
             ..state
         },
         Effect::MineBlock(transactions_to_mine.to_vec()),
-    );
+    )
 }
 
 pub async fn handle_completed_mine_block(
@@ -45,11 +45,11 @@ pub async fn handle_completed_mine_block(
         error!("failed to add next block");
     }
 
-    return (
+    (
         state,
         map_effect(
             || Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![new_block])),
             changed,
         ),
-    );
+    )
 }

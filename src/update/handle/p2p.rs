@@ -18,17 +18,17 @@ pub async fn handle_p2p_message(
     match message {
         P2PMessage::QueryAll => {
             let chain = state.chain.blocks.clone();
-            return (
+            (
                 state,
                 Effect::Broadcast(P2PMessage::ResponseBlockChain(chain)),
-            );
+            )
         }
         P2PMessage::QueryLatest => {
             let blocks = vec![state.chain.get_latest_block()];
-            return (
+            (
                 state,
                 Effect::Broadcast(P2PMessage::ResponseBlockChain(blocks)),
-            );
+            )
         }
         P2PMessage::ResponseBlockChain(blocks) => {
             let Some(received_latest_block) = blocks.last() else {
@@ -80,14 +80,12 @@ pub async fn handle_p2p_message(
                     );
                 }
             }
-            return (state, Effect::None);
+            (state, Effect::None)
         }
-        P2PMessage::QueryTransactions => {
-            return (
-                state.clone(),
-                Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions.clone())),
-            );
-        }
+        P2PMessage::QueryTransactions => (
+            state.clone(),
+            Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions.clone())),
+        ),
         P2PMessage::ResponseTransactions(transactions) => {
             let (state, changed) =
                 transactions
@@ -96,32 +94,30 @@ pub async fn handle_p2p_message(
                         let (state, changed_) = state.add_transaction(transaction);
                         (state, changed || changed_)
                     });
-            return (
+            (
                 state.clone(),
                 map_effect(
                     || Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions)),
                     changed,
                 ),
-            );
+            )
         }
-        P2PMessage::QueryPeers => {
-            return (
-                match peer_option {
-                    Some(peer) => state.add_peer(&peer).0,
-                    None => state.clone(),
-                },
-                Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone())),
-            );
-        }
+        P2PMessage::QueryPeers => (
+            match peer_option {
+                Some(peer) => state.add_peer(&peer).0,
+                None => state.clone(),
+            },
+            Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone())),
+        ),
         P2PMessage::ResponsePeers(peers) => {
             let (state, changed) = state.add_peers(&peers);
-            return (
+            (
                 state.clone(),
                 map_effect(
                     || Effect::Broadcast(P2PMessage::ResponsePeers(state.peers)),
                     changed,
                 ),
-            );
+            )
         }
     }
 }
