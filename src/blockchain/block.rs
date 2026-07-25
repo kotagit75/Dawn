@@ -6,10 +6,7 @@ use vdf_rs::InvalidIterations;
 
 use crate::{
     beacon::Beacon,
-    blockchain::{
-        address::Address, coinbase::is_valid_coinbase_transaction, transaction::Transaction,
-        utxo::UnspentTransaction,
-    },
+    blockchain::{address::Address, transaction::Transaction},
     util::{
         hash::{Hashed, hash},
         key::{PK, SK},
@@ -72,22 +69,8 @@ impl Block {
         )
     }
 
-    fn get_block_height(&self) -> u64 {
+    pub fn get_block_height(&self) -> u64 {
         self.index
-    }
-
-    pub fn is_valid(&self, unspent_transactions: &[UnspentTransaction]) -> bool {
-        if self.transactions.len() > MAX_TRANSACTIONS_PER_BLOCK {
-            return false;
-        }
-        if let Some((coinbase, normal)) = self.transactions.split_first() {
-            self.verify_signature()
-                && self.verify_vdf_solution()
-                && is_valid_coinbase_transaction(coinbase, self.get_block_height())
-                && normal.iter().all(|t| t.is_valid(unspent_transactions))
-        } else {
-            false
-        }
     }
 
     fn to_blockdata(&self) -> BlockData<'_> {
@@ -107,17 +90,6 @@ impl Block {
             &self.vdf_solution,
             self.signature.clone(),
         )
-    }
-
-    pub fn get_unspent_transactions(
-        &self,
-        (previous_unspent, first_id): (Vec<UnspentTransaction>, u64),
-    ) -> (Vec<UnspentTransaction>, u64 /*new id */) {
-        self.transactions
-            .iter()
-            .fold((previous_unspent, first_id), |acc, tx| {
-                tx.fee_to_unspent_transaction(self.issuer.clone(), tx.get_unspent_transactions(acc))
-            })
     }
 }
 
@@ -269,7 +241,7 @@ mod tests {
     use crate::{
         blockchain::{
             coinbase::coinbase_transaction,
-            utxo::{TransactionIn, TransactionOut},
+            utxo::{TransactionIn, TransactionOut, UnspentTransaction},
         },
         util::key::generate_sk,
     };

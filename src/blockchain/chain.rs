@@ -2,18 +2,11 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    beacon::{Beacon, BeaconCache, BeaconKey, is_valid_beacon},
+    beacon::{BeaconCache, BeaconKey, is_valid_beacon},
     blockchain::{
-        address::Address,
-        block::{Block, BlockData, BlockDataOwned, genesis_block},
-        coinbase::coinbase_transaction,
-        transaction::Transaction,
-        utxo::{
-            UnspentTransaction, flex_unspent_transactions, get_transaction_out,
-            transactions_to_unspent_ids,
-        },
+        block::{Block, genesis_block},
+        validation::is_valid_new_block,
     },
-    util::key::SK,
 };
 
 // For blocks older than CHECKPOINT_DEPTH, temperature verification is omitted.
@@ -42,54 +35,6 @@ impl Chain {
             Some(block) => block.clone(),
             None => genesis_block(),
         }
-    }
-
-    pub fn generate_next_block_data(
-        &self,
-        issuer: &Address,
-        beacon: Beacon,
-        transactions_without_coinbase: Vec<Transaction>,
-        next_timestamp: i64,
-    ) -> BlockDataOwned {
-        let previous_block: Block = self.get_latest_block();
-        let next_index: u64 = previous_block.index + 1;
-        let transactions = [coinbase_transaction(issuer, next_index)]
-            .iter()
-            .chain(&transactions_without_coinbase)
-            .cloned()
-            .collect::<Vec<Transaction>>();
-        BlockData::new(
-            next_index,
-            next_timestamp,
-            &transactions,
-            &beacon,
-            issuer,
-            previous_block.hash,
-        )
-        .to_owned()
-    }
-
-    pub fn generate_next_block(
-        &self,
-        sk: &SK,
-        vdf_solution: Vec<u8>,
-        block_data: BlockDataOwned,
-    ) -> Block {
-        Block::new_with_creating_signature(&block_data.as_borrowed(), vdf_solution, sk)
-    }
-
-    pub fn is_valid(&self, cache: &dyn BeaconCache) -> bool {
-        let is_valid_genesis_block = self.blocks.first().cloned() == Some(genesis_block());
-        let is_valid_chain = self.blocks.windows(2).all(|windows| {
-            is_valid_new_block(
-                &windows[1],
-                &windows[0],
-                &self.get_unspent_transactions().0,
-                self.get_block_depth(&windows[1]),
-                cache,
-            )
-        });
-        is_valid_genesis_block && is_valid_chain
     }
 
     pub fn replace(&self, new_chain: Chain, cache: &dyn BeaconCache) -> Self {
@@ -146,108 +91,6 @@ impl Chain {
             (self.clone(), false)
         }
     }
-
-    pub fn get_unspent_transactions(&self) -> (Vec<UnspentTransaction>, u64 /*new id */) {
-        self.blocks.iter().fold((Vec::new(), 1), |acc, block| {
-            block.get_unspent_transactions(acc)
-        })
-    }
-
-    pub fn find_unspent_transaction(&self, unspent_id: u64) -> Option<UnspentTransaction> {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .find(|unspent| unspent.id == unspent_id)
-            .cloned()
-    }
-
-    pub fn find_unspent_transactions(&self, unspent_ids: &[u64]) -> Vec<UnspentTransaction> {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .filter(|unspent| unspent_ids.contains(&unspent.id))
-            .cloned()
-            .collect()
-    }
-
-    pub fn filter_unspent_transactions_by_address(
-        &self,
-        address: &Address,
-    ) -> Vec<UnspentTransaction> {
-        self.get_unspent_transactions()
-            .0
-            .iter()
-            .filter(|unspent| unspent.address == *address)
-            .cloned()
-            .collect()
-    }
-
-    pub fn generate_transaction(
-        &self,
-        sender: &Address,
-        recipient: &Address,
-        send_amount: u64,
-        secret_key: &SK,
-        used_transactions: &[Transaction],
-        fee: u64,
-    ) -> Option<Transaction> {
-        let amount = send_amount + fee;
-
-        let mut filtered_unspent_transactions = self.filter_unspent_transactions_by_address(sender);
-        let used_unspent_ids: Vec<u64> = transactions_to_unspent_ids(used_transactions);
-        filtered_unspent_transactions.retain(|tx| !used_unspent_ids.contains(&tx.id));
-        let use_unspent = flex_unspent_transactions(amount, filtered_unspent_transactions);
-        if use_unspent.is_empty() {
-            return None;
-        }
-
-        let transaction = Transaction::new_with_creating_signature(
-            sender,
-            get_transaction_out(
-                sender,
-                recipient,
-                send_amount,
-                fee,
-                use_unspent.iter().map(|tx| tx.amount).sum::<u64>(),
-            ),
-            use_unspent.iter().map(|tx| tx.to_txin()).collect(),
-            fee,
-            secret_key,
-        );
-        Some(transaction)
-    }
-
-    pub fn get_balance(&self, address: &Address) -> u64 {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .filter(|tx| &tx.address == address)
-            .map(|tx| tx.amount)
-            .sum()
-    }
-}
-
-pub fn is_valid_new_block(
-    block: &Block,
-    previous_block: &Block,
-    unspent_transactions: &[UnspentTransaction],
-    block_depth: usize,
-    cache: &dyn BeaconCache,
-) -> bool {
-    let beacon_ok = if block_depth > CHECKPOINT_DEPTH {
-        true
-    } else {
-        let Some(beacon) = cache.get(&BeaconKey::new(&previous_block.hash, block.timestamp)) else {
-            return false;
-        };
-        is_valid_beacon(&beacon, &block.beacon)
-    };
-    block.index == previous_block.index + 1
-        && block.timestamp > previous_block.timestamp
-        && block.previous_hash == previous_block.hash
-        && block.calculate_hash() == block.hash
-        && block.is_valid(unspent_transactions)
-        && beacon_ok
 }
 
 #[cfg(test)]
@@ -255,16 +98,8 @@ mod tests {
     use super::*;
     use crate::beacon::{Beacon, InMemoryBeaconCache};
     use crate::blockchain::block::{Block, genesis_block};
-    use crate::blockchain::coinbase::coinbase_transaction;
-    use crate::blockchain::utxo::TransactionIn;
-    use crate::util::key::{SK, generate_sk};
+    use crate::blockchain::transaction::Transaction;
     use crate::util::signature::SignatureWrapper;
-
-    fn keypair() -> (Address, SK) {
-        let sk = generate_sk(512);
-        let pk = sk.to_pk();
-        (pk, sk)
-    }
 
     fn dummy_block(prev: &Block, txs: Vec<Transaction>, beacon: i32) -> Block {
         Block {
@@ -282,85 +117,11 @@ mod tests {
         }
     }
 
-    fn chain_with_coinbase(miner: &Address) -> Chain {
-        let g = genesis_block();
-        let b1 = dummy_block(&g, vec![coinbase_transaction(miner, 1)], 1);
-        Chain {
-            blocks: vec![g, b1],
-        }
-    }
-
     #[test]
     fn new_has_only_genesis() {
         let c = Chain::new();
         assert_eq!(c.blocks.len(), 1);
         assert_eq!(c.get_latest_block(), genesis_block());
-    }
-
-    #[test]
-    fn get_unspent_and_find_unspent_work() {
-        let (miner, _) = keypair();
-        let c = chain_with_coinbase(&miner);
-        let (utxos, next_id) = c.get_unspent_transactions();
-        assert_eq!(utxos.len(), 2); /* coinbase and fee */
-        assert_eq!(utxos[0].amount, 50);
-        assert_eq!(next_id, 3); /* coinbase -> fee ->  */
-        assert!(c.find_unspent_transaction(1).is_some());
-        assert!(c.find_unspent_transaction(999).is_none());
-    }
-
-    #[test]
-    fn generate_transaction_returns_none_when_insufficient() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-        let tx = c.generate_transaction(&sender, &recipient, 999, &sk, &[], 0);
-        assert!(tx.is_none());
-    }
-
-    #[test]
-    fn generate_transaction_uses_utxo_and_returns_change() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let tx = c
-            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
-            .unwrap();
-
-        assert_eq!(tx.tx_in, vec![TransactionIn { unspent_id: 1 }]);
-        assert_eq!(tx.out.iter().map(|o| o.amount).sum::<u64>(), 50);
-    }
-
-    #[test]
-    fn generate_transaction_respects_used_transactions_filter() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let used = c
-            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
-            .unwrap();
-
-        let next = c.generate_transaction(&sender, &recipient, 10, &sk, &[used], 0);
-
-        assert!(next.is_none());
-    }
-
-    #[test]
-    fn get_balance_sums_unspent_by_address() {
-        let (a, _) = keypair();
-        let (b, _) = keypair();
-
-        let g = genesis_block();
-        let b1 = dummy_block(&g, vec![coinbase_transaction(&a, 0)], 1);
-        let b2 = dummy_block(&b1, vec![coinbase_transaction(&b, 1)], 2);
-        let c = Chain {
-            blocks: vec![g, b1, b2],
-        };
-
-        assert_eq!(c.get_balance(&a), 50);
-        assert_eq!(c.get_balance(&b), 50);
     }
 
     #[test]
@@ -382,17 +143,6 @@ mod tests {
         };
         let cache = InMemoryBeaconCache::new();
         assert_eq!(base.replace(longer_but_invalid, &cache), base);
-    }
-
-    #[test]
-    fn generate_transaction_returns_none_when_amount_plus_fee_exceeds_funds() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let tx = c.generate_transaction(&sender, &recipient, 49, &sk, &[], 2);
-
-        assert!(tx.is_none());
     }
 
     #[test]

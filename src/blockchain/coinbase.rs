@@ -1,9 +1,5 @@
 use crate::{
-    blockchain::{
-        address::{Address, is_valid_address},
-        transaction::Transaction,
-        utxo::TransactionOut,
-    },
+    blockchain::{address::Address, transaction::Transaction, utxo::TransactionOut},
     util::signature::SignatureWrapper,
 };
 
@@ -12,12 +8,12 @@ use crate::{
  */
 const COINBASE_AMOUNT_HALVING_INTERVAL: u64 = 210000;
 const INITIAL_COINBASE_AMOUNT: u64 = 50;
-fn coinbase_amount(block_height: u64) -> u64 {
+pub fn coinbase_amount(block_height: u64) -> u64 {
     let halvings: u64 = block_height / COINBASE_AMOUNT_HALVING_INTERVAL;
     INITIAL_COINBASE_AMOUNT >> halvings
 }
 
-fn coinbase_address() -> Address {
+pub fn coinbase_address() -> Address {
     Address { der: String::new() }
 }
 pub fn coinbase_transaction(address: &Address, block_height: u64) -> Transaction {
@@ -33,21 +29,13 @@ pub fn coinbase_transaction(address: &Address, block_height: u64) -> Transaction
     }
 }
 
-pub fn is_valid_coinbase_transaction(transaction: &Transaction, block_height: u64) -> bool {
-    transaction.sender == coinbase_address()
-        && transaction.tx_in.is_empty()
-        && transaction.out.len() == 1
-        && transaction.out[0].amount == coinbase_amount(block_height)
-        && transaction
-            .out
-            .iter()
-            .all(|txout| is_valid_address(&txout.address))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::key::{SK, generate_sk};
+    use crate::{
+        blockchain::validation::is_valid_coinbase_transaction,
+        util::key::{SK, generate_sk},
+    };
 
     fn keypair() -> (Address, SK) {
         let sk = generate_sk(512);
