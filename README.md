@@ -1,7 +1,6 @@
 <div align="center">
     <img src="assets/cover.png">
-    <!--<h1>Btfy</h1>-->
-    <!--<h2>A Blockchain Secured by Weather Observations</h2>-->
+  <p></p>
 
   ![Rust](https://shields.io/badge/-Rust-3776AB?style=for-the-badge&logo=rust)
   [![Discord](https://img.shields.io/badge/Join%20us%20on-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/SP9N9PD3Sy)
