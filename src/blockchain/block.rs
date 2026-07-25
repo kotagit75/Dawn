@@ -6,7 +6,7 @@ use vdf_rs::InvalidIterations;
 
 use crate::{
     beacon::Beacon,
-    blockchain::{address::Address, transaction::Transaction, utxo::UnspentTransaction},
+    blockchain::{address::Address, transaction::Transaction},
     util::{
         hash::{Hashed, hash},
         key::{PK, SK},
@@ -90,17 +90,6 @@ impl Block {
             &self.vdf_solution,
             self.signature.clone(),
         )
-    }
-
-    pub fn get_unspent_transactions(
-        &self,
-        (previous_unspent, first_id): (Vec<UnspentTransaction>, u64),
-    ) -> (Vec<UnspentTransaction>, u64 /*new id */) {
-        self.transactions
-            .iter()
-            .fold((previous_unspent, first_id), |acc, tx| {
-                tx.fee_to_unspent_transaction(self.issuer.clone(), tx.get_unspent_transactions(acc))
-            })
     }
 }
 
@@ -252,7 +241,7 @@ mod tests {
     use crate::{
         blockchain::{
             coinbase::coinbase_transaction,
-            utxo::{TransactionIn, TransactionOut},
+            utxo::{TransactionIn, TransactionOut, UnspentTransaction},
         },
         util::key::generate_sk,
     };

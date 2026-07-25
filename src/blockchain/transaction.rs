@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     blockchain::{
         address::Address,
-        utxo::{TransactionIn, TransactionOut, UnspentTransaction},
+        utxo::{TransactionIn, TransactionOut},
     },
     util::{key::SK, signature::SignatureWrapper},
 };
@@ -81,57 +81,6 @@ impl Transaction {
     pub fn total_amount(&self) -> u64 {
         self.fee + self.out.iter().map(|txout| txout.amount).sum::<u64>()
     }
-
-    /*
-     * This method calculates the total amount of the transaction input.
-     */
-    pub fn calc_total_input_amount(&self, unspent_transactions: &[UnspentTransaction]) -> u64 {
-        self.tx_in
-            .iter()
-            .flat_map(|tx_in| tx_in.get_amount(unspent_transactions))
-            .sum::<u64>()
-    }
-
-    pub fn get_unspent_transactions(
-        &self,
-        (previous_unspent, first_id): (Vec<UnspentTransaction>, u64),
-    ) -> (Vec<UnspentTransaction>, u64 /*new id */) {
-        let (mut new_unspent, new_id) =
-            self.out
-                .iter()
-                .fold((previous_unspent, first_id), |(mut acc, id), tx_out| {
-                    let (unspent, new_id) = tx_out.to_unspent(id);
-                    acc.push(unspent);
-                    (acc, new_id)
-                });
-        new_unspent.retain(|unspent| {
-            !self
-                .tx_in
-                .iter()
-                .any(|tx_in| tx_in.unspent_id == unspent.id)
-        });
-        (new_unspent, new_id)
-    }
-
-    pub fn fee_to_unspent_transaction(
-        &self,
-        miner: Address,
-        (previous_unspent, first_id): (Vec<UnspentTransaction>, u64),
-    ) -> (Vec<UnspentTransaction>, u64) {
-        let fee_unspent = UnspentTransaction {
-            id: first_id,
-            address: miner,
-            amount: self.fee,
-        };
-        (
-            previous_unspent
-                .iter()
-                .chain([fee_unspent].iter())
-                .cloned()
-                .collect(),
-            first_id + 1,
-        )
-    }
 }
 
 fn transaction_to_buf_for_signature(
@@ -160,7 +109,7 @@ fn create_transaction_signature(
 mod tests {
     use super::*;
     use crate::{
-        blockchain::utxo::{flex_unspent_transactions, get_transaction_out},
+        blockchain::utxo::{UnspentTransaction, flex_unspent_transactions, get_transaction_out},
         util::key::generate_sk,
     };
 

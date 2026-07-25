@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     beacon::{BeaconCache, BeaconKey, is_valid_beacon},
     blockchain::{
-        address::Address,
         block::{Block, genesis_block},
-        utxo::UnspentTransaction,
         validation::is_valid_new_block,
     },
 };
@@ -93,56 +91,13 @@ impl Chain {
             (self.clone(), false)
         }
     }
-
-    pub fn get_unspent_transactions(&self) -> (Vec<UnspentTransaction>, u64 /*new id */) {
-        self.blocks.iter().fold((Vec::new(), 1), |acc, block| {
-            block.get_unspent_transactions(acc)
-        })
-    }
-
-    pub fn find_unspent_transaction(&self, unspent_id: u64) -> Option<UnspentTransaction> {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .find(|unspent| unspent.id == unspent_id)
-            .cloned()
-    }
-
-    pub fn find_unspent_transactions(&self, unspent_ids: &[u64]) -> Vec<UnspentTransaction> {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .filter(|unspent| unspent_ids.contains(&unspent.id))
-            .cloned()
-            .collect()
-    }
-
-    pub fn filter_unspent_transactions_by_address(
-        &self,
-        address: &Address,
-    ) -> Vec<UnspentTransaction> {
-        self.get_unspent_transactions()
-            .0
-            .iter()
-            .filter(|unspent| unspent.address == *address)
-            .cloned()
-            .collect()
-    }
-
-    pub fn get_balance(&self, address: &Address) -> u64 {
-        let (unspent_transactions, _) = self.get_unspent_transactions();
-        unspent_transactions
-            .iter()
-            .filter(|tx| &tx.address == address)
-            .map(|tx| tx.amount)
-            .sum()
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::beacon::{Beacon, InMemoryBeaconCache};
+    use crate::blockchain::address::Address;
     use crate::blockchain::block::{Block, genesis_block};
     use crate::blockchain::coinbase::coinbase_transaction;
     use crate::blockchain::transaction::Transaction;

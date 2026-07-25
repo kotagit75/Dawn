@@ -5,4 +5,5 @@ pub mod coinbase;
 pub mod generation;
 pub mod transaction;
 pub mod utxo;
+pub mod utxo_state;
 pub mod validation;
