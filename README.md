@@ -1,6 +1,6 @@
 <div align="center">
     <img src="assets/cover.png">
-    <h1>Btfy</h1>
+    <!--<h1>Btfy</h1>-->
     <!--<h2>A Blockchain Secured by Weather Observations</h2>-->
 
   ![Rust](https://shields.io/badge/-Rust-3776AB?style=for-the-badge&logo=rust)
