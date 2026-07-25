@@ -81,3 +81,99 @@ impl Chain {
         Some(transaction)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::blockchain::address::Address;
+    use crate::util::key::{SK, generate_sk};
+
+    fn keypair() -> (Address, SK) {
+        let sk = generate_sk(512);
+        let pk = sk.to_pk();
+        (pk, sk)
+    }
+
+    fn dummy_block(
+        prev: &crate::blockchain::block::Block,
+        txs: Vec<crate::blockchain::transaction::Transaction>,
+        beacon: i32,
+    ) -> crate::blockchain::block::Block {
+        crate::blockchain::block::Block {
+            index: prev.index + 1,
+            timestamp: prev.timestamp + 1,
+            transactions: txs,
+            beacon: crate::beacon::Beacon {
+                values: vec![beacon],
+            },
+            vdf_solution: vec![],
+            previous_hash: prev.hash,
+            issuer: prev.issuer.clone(),
+            signature: crate::util::signature::SignatureWrapper::default(),
+            hash: [prev.index as u8 + 1; 32],
+        }
+    }
+
+    fn chain_with_coinbase(miner: &Address) -> crate::blockchain::chain::Chain {
+        let g = crate::blockchain::block::genesis_block();
+        let b1 = dummy_block(
+            &g,
+            vec![crate::blockchain::coinbase::coinbase_transaction(miner, 1)],
+            1,
+        );
+        crate::blockchain::chain::Chain {
+            blocks: vec![g, b1],
+        }
+    }
+
+    #[test]
+    fn generate_transaction_returns_none_when_insufficient() {
+        let (sender, sk) = keypair();
+        let (recipient, _) = keypair();
+        let c = chain_with_coinbase(&sender);
+        let tx = c.generate_transaction(&sender, &recipient, 999, &sk, &[], 0);
+        assert!(tx.is_none());
+    }
+
+    #[test]
+    fn generate_transaction_uses_utxo_and_returns_change() {
+        let (sender, sk) = keypair();
+        let (recipient, _) = keypair();
+        let c = chain_with_coinbase(&sender);
+
+        let tx = c
+            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
+            .unwrap();
+
+        assert_eq!(
+            tx.tx_in,
+            vec![crate::blockchain::utxo::TransactionIn { unspent_id: 1 }]
+        );
+        assert_eq!(tx.out.iter().map(|o| o.amount).sum::<u64>(), 50);
+    }
+
+    #[test]
+    fn generate_transaction_respects_used_transactions_filter() {
+        let (sender, sk) = keypair();
+        let (recipient, _) = keypair();
+        let c = chain_with_coinbase(&sender);
+
+        let used = c
+            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
+            .unwrap();
+
+        let next = c.generate_transaction(&sender, &recipient, 10, &sk, &[used], 0);
+
+        assert!(next.is_none());
+    }
+
+    #[test]
+    fn generate_transaction_returns_none_when_amount_plus_fee_exceeds_funds() {
+        let (sender, sk) = keypair();
+        let (recipient, _) = keypair();
+        let c = chain_with_coinbase(&sender);
+
+        let tx = c.generate_transaction(&sender, &recipient, 49, &sk, &[], 2);
+
+        assert!(tx.is_none());
+    }
+}

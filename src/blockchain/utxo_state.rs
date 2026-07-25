@@ -114,3 +114,74 @@ impl Chain {
             .sum()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::blockchain::address::Address;
+    use crate::blockchain::block::{Block, genesis_block};
+    use crate::blockchain::coinbase::coinbase_transaction;
+    use crate::util::key::{SK, generate_sk};
+    use crate::util::signature::SignatureWrapper;
+
+    fn keypair() -> (Address, SK) {
+        let sk = generate_sk(512);
+        let pk = sk.to_pk();
+        (pk, sk)
+    }
+
+    fn dummy_block(
+        prev: &Block,
+        txs: Vec<crate::blockchain::transaction::Transaction>,
+        beacon: i32,
+    ) -> Block {
+        Block {
+            index: prev.index + 1,
+            timestamp: prev.timestamp + 1,
+            transactions: txs,
+            beacon: crate::beacon::Beacon {
+                values: vec![beacon],
+            },
+            vdf_solution: vec![],
+            previous_hash: prev.hash,
+            issuer: prev.issuer.clone(),
+            signature: SignatureWrapper::default(),
+            hash: [prev.index as u8 + 1; 32],
+        }
+    }
+
+    fn chain_with_coinbase(miner: &Address) -> crate::blockchain::chain::Chain {
+        let g = genesis_block();
+        let b1 = dummy_block(&g, vec![coinbase_transaction(miner, 1)], 1);
+        crate::blockchain::chain::Chain {
+            blocks: vec![g, b1],
+        }
+    }
+
+    #[test]
+    fn get_unspent_and_find_unspent_work() {
+        let (miner, _) = keypair();
+        let c = chain_with_coinbase(&miner);
+        let (utxos, next_id) = c.get_unspent_transactions();
+        assert_eq!(utxos.len(), 2); /* coinbase and fee */
+        assert_eq!(utxos[0].amount, 50);
+        assert_eq!(next_id, 3); /* coinbase -> fee ->  */
+        assert!(c.find_unspent_transaction(1).is_some());
+        assert!(c.find_unspent_transaction(999).is_none());
+    }
+
+    #[test]
+    fn get_balance_sums_unspent_by_address() {
+        let (a, _) = keypair();
+        let (b, _) = keypair();
+
+        let g = genesis_block();
+        let b1 = dummy_block(&g, vec![coinbase_transaction(&a, 0)], 1);
+        let b2 = dummy_block(&b1, vec![coinbase_transaction(&b, 1)], 2);
+        let c = crate::blockchain::chain::Chain {
+            blocks: vec![g, b1, b2],
+        };
+
+        assert_eq!(c.get_balance(&a), 50);
+        assert_eq!(c.get_balance(&b), 50);
+    }
+}

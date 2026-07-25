@@ -97,19 +97,9 @@ impl Chain {
 mod tests {
     use super::*;
     use crate::beacon::{Beacon, InMemoryBeaconCache};
-    use crate::blockchain::address::Address;
     use crate::blockchain::block::{Block, genesis_block};
-    use crate::blockchain::coinbase::coinbase_transaction;
     use crate::blockchain::transaction::Transaction;
-    use crate::blockchain::utxo::TransactionIn;
-    use crate::util::key::{SK, generate_sk};
     use crate::util::signature::SignatureWrapper;
-
-    fn keypair() -> (Address, SK) {
-        let sk = generate_sk(512);
-        let pk = sk.to_pk();
-        (pk, sk)
-    }
 
     fn dummy_block(prev: &Block, txs: Vec<Transaction>, beacon: i32) -> Block {
         Block {
@@ -127,85 +117,11 @@ mod tests {
         }
     }
 
-    fn chain_with_coinbase(miner: &Address) -> Chain {
-        let g = genesis_block();
-        let b1 = dummy_block(&g, vec![coinbase_transaction(miner, 1)], 1);
-        Chain {
-            blocks: vec![g, b1],
-        }
-    }
-
     #[test]
     fn new_has_only_genesis() {
         let c = Chain::new();
         assert_eq!(c.blocks.len(), 1);
         assert_eq!(c.get_latest_block(), genesis_block());
-    }
-
-    #[test]
-    fn get_unspent_and_find_unspent_work() {
-        let (miner, _) = keypair();
-        let c = chain_with_coinbase(&miner);
-        let (utxos, next_id) = c.get_unspent_transactions();
-        assert_eq!(utxos.len(), 2); /* coinbase and fee */
-        assert_eq!(utxos[0].amount, 50);
-        assert_eq!(next_id, 3); /* coinbase -> fee ->  */
-        assert!(c.find_unspent_transaction(1).is_some());
-        assert!(c.find_unspent_transaction(999).is_none());
-    }
-
-    #[test]
-    fn generate_transaction_returns_none_when_insufficient() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-        let tx = c.generate_transaction(&sender, &recipient, 999, &sk, &[], 0);
-        assert!(tx.is_none());
-    }
-
-    #[test]
-    fn generate_transaction_uses_utxo_and_returns_change() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let tx = c
-            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
-            .unwrap();
-
-        assert_eq!(tx.tx_in, vec![TransactionIn { unspent_id: 1 }]);
-        assert_eq!(tx.out.iter().map(|o| o.amount).sum::<u64>(), 50);
-    }
-
-    #[test]
-    fn generate_transaction_respects_used_transactions_filter() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let used = c
-            .generate_transaction(&sender, &recipient, 30, &sk, &[], 0)
-            .unwrap();
-
-        let next = c.generate_transaction(&sender, &recipient, 10, &sk, &[used], 0);
-
-        assert!(next.is_none());
-    }
-
-    #[test]
-    fn get_balance_sums_unspent_by_address() {
-        let (a, _) = keypair();
-        let (b, _) = keypair();
-
-        let g = genesis_block();
-        let b1 = dummy_block(&g, vec![coinbase_transaction(&a, 0)], 1);
-        let b2 = dummy_block(&b1, vec![coinbase_transaction(&b, 1)], 2);
-        let c = Chain {
-            blocks: vec![g, b1, b2],
-        };
-
-        assert_eq!(c.get_balance(&a), 50);
-        assert_eq!(c.get_balance(&b), 50);
     }
 
     #[test]
@@ -227,17 +143,6 @@ mod tests {
         };
         let cache = InMemoryBeaconCache::new();
         assert_eq!(base.replace(longer_but_invalid, &cache), base);
-    }
-
-    #[test]
-    fn generate_transaction_returns_none_when_amount_plus_fee_exceeds_funds() {
-        let (sender, sk) = keypair();
-        let (recipient, _) = keypair();
-        let c = chain_with_coinbase(&sender);
-
-        let tx = c.generate_transaction(&sender, &recipient, 49, &sk, &[], 2);
-
-        assert!(tx.is_none());
     }
 
     #[test]
