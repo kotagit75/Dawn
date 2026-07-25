@@ -18,7 +18,7 @@ use crate::{
     blockchain::{address::Address, chain::Chain},
     p2p::Peer,
     state::State,
-    update::{Command, Event, UpdateResult},
+    update::{Command, UpdateResult, event::Event},
     util::key::PK,
 };
 

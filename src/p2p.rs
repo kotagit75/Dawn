@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 use crate::{
     CONFIG,
     blockchain::{block::Block, transaction::Transaction},
-    update::{Command, Event},
+    update::{Command, event::Event},
 };
 
 pub async fn init_p2p(event_tx: mpsc::Sender<Command>) {

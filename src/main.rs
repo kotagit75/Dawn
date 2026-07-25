@@ -20,7 +20,7 @@ use crate::{
     node::save_chain,
     p2p::Peer,
     state::State,
-    update::{Command, Event, UpdateResult, run_effect, update},
+    update::{Command, UpdateResult, event::Event, run_effect, update},
 };
 
 pub mod api;

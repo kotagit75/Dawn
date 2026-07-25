@@ -1,37 +1,29 @@
 use std::{time, vec};
 
 use crate::{
-    beacon::{BeaconCache, fetch_beacon, prefetch_beacon},
-    blockchain::{
-        address::Address,
-        block::{Block, MAX_TRANSACTIONS_PER_BLOCK, solve_block_vdf},
-        chain::{CHECKPOINT_DEPTH, Chain},
-        transaction::Transaction,
-        validation::is_valid_address,
-    },
-    p2p::{P2PMessage, Peer, broadcast},
+    beacon::{BeaconCache, fetch_beacon},
+    blockchain::block::solve_block_vdf,
+    p2p::broadcast,
     state::State,
+    update::{
+        effect::Effect,
+        event::Event,
+        handle::{
+            miner::{handle_completed_mine_block, handle_mine_block},
+            p2p::handle_p2p_message,
+            peer::{handle_add_peer, handle_remove_peers},
+            transaction::handle_add_transaction,
+        },
+    },
 };
 use chrono::Utc;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum Event {
-    AddPeer(Peer),
-    RemovePeers(Vec<Peer>),
-    AddTransaction(Address, u64, u64),
-    MineBlock,
-    CompletedMineBlock(Block),
-    P2PMessage(Option<Peer>, P2PMessage),
-}
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum Effect {
-    None,
-    MineBlock(Vec<Transaction>),
-    Broadcast(P2PMessage),
-}
+pub mod beacon;
+pub mod effect;
+pub mod event;
+pub mod handle;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UpdateResult {
@@ -45,221 +37,21 @@ pub enum Command {
     ApiRequest(Event, oneshot::Sender<UpdateResult>),
 }
 
-async fn prefetch_chain_beacons(cache: &dyn BeaconCache, blocks: &[Block]) {
-    if blocks.len() < 2 {
-        return;
-    }
-    let start = blocks.len().saturating_sub(CHECKPOINT_DEPTH + 1);
-    let tasks = blocks[start..]
-        .windows(2)
-        .map(|window| prefetch_beacon(cache, &window[0].hash, window[1].timestamp));
-    let _ = join_all(tasks).await;
-}
-
-fn map_effect(effect: impl FnOnce() -> Effect, changed: bool) -> Effect {
-    if changed { effect() } else { Effect::None }
-}
-
 pub async fn update(event: Event, state: State, beacon_cache: &dyn BeaconCache) -> (State, Effect) {
     match event {
-        Event::AddPeer(peer) => {
-            let (state, changed) = state.add_peer(&peer);
-            if changed {
-                info!("added peer: {}", peer.ip);
-            } else {
-                error!("peer already exists: {}", peer.ip);
-            }
-            return (
-                state,
-                map_effect(|| Effect::Broadcast(P2PMessage::QueryPeers), changed),
-            );
-        }
-        Event::RemovePeers(peers) => {
-            info!(
-                "remove peers: {:?}",
-                peers.iter().map(|peer| peer.ip.to_string())
-            );
-            return (state.remove_peers(&peers).0, Effect::None);
-        }
+        Event::AddPeer(peer) => handle_add_peer(state, peer),
+        Event::RemovePeers(peers) => handle_remove_peers(state, peers),
         Event::AddTransaction(recipient, send_amount, fee) => {
-            if !is_valid_address(&recipient) {
-                info!("invalid recipient address: {}", recipient.der);
-                return (state, Effect::None);
-            }
-            if let Some(transaction) = state.chain.generate_transaction(
-                &state.address,
-                &recipient,
-                send_amount,
-                &state.secret_key,
-                &state.transactions,
-                fee,
-            ) {
-                let (state, changed) = state.add_transaction(&transaction);
-                if changed {
-                    info!("added transaction: {:?}", transaction);
-                } else {
-                    error!("failed to add transaction: {:?}", transaction);
-                }
-                return (
-                    state,
-                    map_effect(
-                        || Effect::Broadcast(P2PMessage::ResponseTransactions(vec![transaction])),
-                        changed,
-                    ),
-                );
-            }
+            handle_add_transaction(state, &recipient, send_amount, fee)
         }
-        Event::MineBlock => {
-            let mut sorted_transactions: Vec<_> = state.transactions.clone();
-            sorted_transactions.sort_by_key(|tx| tx.fee);
-            sorted_transactions.reverse();
-            let (transactions_to_mine, remaining_transactions) = sorted_transactions.split_at(
-                std::cmp::min(MAX_TRANSACTIONS_PER_BLOCK, sorted_transactions.len()),
-            );
-
-            return (
-                State {
-                    transactions: remaining_transactions.to_vec(),
-                    ..state
-                },
-                Effect::MineBlock(transactions_to_mine.to_vec()),
-            );
+        Event::P2PMessage(peer_option, message) => {
+            handle_p2p_message(state, beacon_cache, peer_option, message).await
         }
+        Event::MineBlock => handle_mine_block(state),
         Event::CompletedMineBlock(new_block) => {
-            let _ = prefetch_beacon(
-                beacon_cache,
-                &state.chain.get_latest_block().hash,
-                new_block.timestamp,
-            )
-            .await;
-            let (chain, changed) =
-                state
-                    .chain
-                    .add_block(new_block.clone(), true, true, beacon_cache);
-            let state = State { chain, ..state };
-
-            if changed {
-                info!("completed to add next block");
-            } else {
-                error!("failed to add next block");
-            }
-
-            return (
-                state,
-                map_effect(
-                    || Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![new_block])),
-                    changed,
-                ),
-            );
-        }
-        Event::P2PMessage(_, P2PMessage::QueryAll) => {
-            let chain = state.chain.blocks.clone();
-            return (
-                state,
-                Effect::Broadcast(P2PMessage::ResponseBlockChain(chain)),
-            );
-        }
-        Event::P2PMessage(_, P2PMessage::QueryLatest) => {
-            let blocks = vec![state.chain.get_latest_block()];
-            return (
-                state,
-                Effect::Broadcast(P2PMessage::ResponseBlockChain(blocks)),
-            );
-        }
-        Event::P2PMessage(_, P2PMessage::ResponseBlockChain(blocks)) => {
-            let Some(received_latest_block) = blocks.last() else {
-                return (state, Effect::None);
-            };
-            let held_latest_block = state.chain.get_latest_block();
-            if received_latest_block.index > held_latest_block.index {
-                if received_latest_block.previous_hash == held_latest_block.hash {
-                    let _ = prefetch_beacon(
-                        beacon_cache,
-                        &held_latest_block.hash,
-                        received_latest_block.timestamp,
-                    )
-                    .await;
-                    let (new_chain, changed) = state.chain.add_block(
-                        received_latest_block.clone(),
-                        false,
-                        true,
-                        beacon_cache,
-                    );
-                    if changed {
-                        info!("added block: {:?}", received_latest_block);
-                    }
-                    return (
-                        State {
-                            chain: new_chain,
-                            ..state
-                        },
-                        map_effect(
-                            || {
-                                Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![
-                                    received_latest_block.clone(),
-                                ]))
-                            },
-                            changed,
-                        ),
-                    );
-                } else if blocks.len() == 1 {
-                    return (state, Effect::Broadcast(P2PMessage::QueryAll));
-                } else {
-                    prefetch_chain_beacons(beacon_cache, &blocks).await;
-                    info!("replacing chain with {} blocks", blocks.len());
-                    return (
-                        State {
-                            chain: state.chain.replace(Chain { blocks }, beacon_cache),
-                            ..state
-                        },
-                        Effect::None,
-                    );
-                }
-            }
-        }
-        Event::P2PMessage(_, P2PMessage::QueryTransactions) => {
-            return (
-                state.clone(),
-                Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions.clone())),
-            );
-        }
-        Event::P2PMessage(_, P2PMessage::ResponseTransactions(transactions)) => {
-            let (state, changed) =
-                transactions
-                    .iter()
-                    .fold((state, false), |(state, changed), transaction| {
-                        let (state, changed_) = state.add_transaction(transaction);
-                        (state, changed || changed_)
-                    });
-            return (
-                state.clone(),
-                map_effect(
-                    || Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions)),
-                    changed,
-                ),
-            );
-        }
-        Event::P2PMessage(peer_option, P2PMessage::QueryPeers) => {
-            return (
-                match peer_option {
-                    Some(peer) => state.add_peer(&peer).0,
-                    None => state.clone(),
-                },
-                Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone())),
-            );
-        }
-        Event::P2PMessage(_, P2PMessage::ResponsePeers(peers)) => {
-            let (state, changed) = state.add_peers(&peers);
-            return (
-                state.clone(),
-                map_effect(
-                    || Effect::Broadcast(P2PMessage::ResponsePeers(state.peers)),
-                    changed,
-                ),
-            );
+            handle_completed_mine_block(state, beacon_cache, new_block).await
         }
     }
-    (state, Effect::None)
 }
 
 pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
@@ -314,10 +106,13 @@ mod tests {
     use crate::{
         beacon::{Beacon, InMemoryBeaconCache},
         blockchain::{
-            block::{Block, genesis_block},
+            address::Address,
+            block::{Block, MAX_TRANSACTIONS_PER_BLOCK, genesis_block},
             chain::Chain,
             coinbase::coinbase_transaction,
+            transaction::Transaction,
         },
+        p2p::{P2PMessage, Peer},
         state::State,
         util::{
             key::{SK, generate_sk},
