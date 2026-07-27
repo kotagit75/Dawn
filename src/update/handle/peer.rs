@@ -1,26 +1,23 @@
 use crate::{
     p2p::{P2PMessage, Peer},
-    state::State,
+    state::{State, add_peers},
     update::effect::{Effect, map_effect},
 };
 
-pub fn handle_add_peer(state: State, peer: Peer) -> (State, Effect) {
-    let (state, changed) = state.add_peer(&peer);
-    if changed {
-        info!("added peer: {}", peer.ip);
-    } else {
-        error!("peer already exists: {}", peer.ip);
-    }
+pub fn handle_add_peer(state: State, new_peer: Peer) -> (State, Effect) {
+    let (new_state, added) = add_peers(state, &[new_peer]);
     (
-        state,
-        map_effect(|| Effect::Broadcast(P2PMessage::QueryPeers), changed),
+        new_state,
+        map_effect(|| Effect::Broadcast(P2PMessage::QueryPeers), added),
     )
 }
 
-pub fn handle_remove_peers(state: State, peers: Vec<Peer>) -> (State, Effect) {
+pub fn handle_remove_peers(state: State, remove_peers: Vec<Peer>) -> (State, Effect) {
     info!(
         "remove peers: {:?}",
-        peers.iter().map(|peer| peer.ip.to_string())
+        remove_peers.iter().map(|peer| peer.ip.to_string())
     );
-    (state.remove_peers(&peers).0, Effect::None)
+    let mut peers = state.peers.clone();
+    peers.retain(|peer| !remove_peers.contains(peer));
+    (State { peers, ..state }, Effect::None)
 }

@@ -11,8 +11,6 @@ use crate::{
     util::key::SK,
 };
 
-const MAX_PEERS: usize = 64;
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct State {
     pub secret_key: SK,
@@ -33,86 +31,51 @@ impl State {
             peers: Vec::new(),
         }
     }
+}
 
-    fn add_transaction_without_validation(&self, transaction: &Transaction) -> Self {
-        Self {
-            transactions: self
-                .transactions
-                .clone()
-                .into_iter()
-                .chain([transaction.clone()])
-                .collect(),
-            ..self.clone()
+const MAX_PEERS: usize = 64;
+
+pub fn add_peers(state: State, new_peers: &[Peer]) -> (State, bool) {
+    let mut peers = state.peers.clone();
+    let mut added = false;
+    for new_peer in new_peers {
+        if !peers.contains(&new_peer) && peers.len() <= MAX_PEERS {
+            peers.push(new_peer.clone());
+            info!("added peer: {}", new_peer.ip);
+            added = true;
+        } else {
+            error!("peer already exists: {}", new_peer.ip);
         }
     }
+    (State { peers, ..state }, added)
+}
 
-    pub fn add_transaction(&self, transaction: &Transaction) -> (Self, bool) {
-        let tx_in_ids = transaction_to_unspent_ids(transaction);
-        let state_tx_in_ids = transactions_to_unspent_ids(&self.transactions);
+fn add_transaction_to_pool_without_validation(state: State, transaction: &Transaction) -> State {
+    State {
+        transactions: state
+            .transactions
+            .clone()
+            .into_iter()
+            .chain([transaction.clone()])
+            .collect(),
+        ..state
+    }
+}
 
-        let is_valid = transaction.is_valid(&self.chain.get_unspent_transactions().0);
-        let inputs_exist =
-            self.chain.find_unspent_transactions(&tx_in_ids).len() == tx_in_ids.len();
-        let double_spent_in_pool = tx_in_ids.iter().any(|id| state_tx_in_ids.contains(id));
+pub fn add_transaction_to_pool(state: State, transaction: &Transaction) -> (State, bool) {
+    let tx_in_ids = transaction_to_unspent_ids(transaction);
+    let state_tx_in_ids = transactions_to_unspent_ids(&state.transactions);
 
-        if !is_valid || !inputs_exist || double_spent_in_pool {
-            return (self.clone(), false);
-        }
+    let is_valid = transaction.is_valid(&state.chain.get_unspent_transactions().0);
+    let inputs_exist = state.chain.find_unspent_transactions(&tx_in_ids).len() == tx_in_ids.len();
+    let double_spent_in_pool = tx_in_ids.iter().any(|id| state_tx_in_ids.contains(id));
 
-        (self.add_transaction_without_validation(transaction), true)
+    if !is_valid || !inputs_exist || double_spent_in_pool {
+        return (state.clone(), false);
     }
 
-    pub fn add_peer(&self, peer: &Peer) -> (Self, bool) {
-        if self.peers.contains(peer) || self.peers.len() > MAX_PEERS {
-            return (self.clone(), false);
-        }
-        (
-            Self {
-                peers: self
-                    .peers
-                    .clone()
-                    .into_iter()
-                    .chain([peer.clone()])
-                    .collect(),
-                ..self.clone()
-            },
-            true,
-        )
-    }
-
-    pub fn add_peers(&self, peers: &[Peer]) -> (Self, bool) {
-        peers
-            .iter()
-            .fold((self.clone(), false), |(state, changed), peer| {
-                let (state, changed_) = state.add_peer(peer);
-                (state, changed || changed_)
-            })
-    }
-
-    pub fn remove_peer(&self, peer: &Peer) -> (Self, bool) {
-        if !self.peers.contains(peer) {
-            return (self.clone(), false);
-        }
-        (
-            Self {
-                peers: self
-                    .peers
-                    .clone()
-                    .into_iter()
-                    .filter(|p| p != peer)
-                    .collect(),
-                ..self.clone()
-            },
-            true,
-        )
-    }
-
-    pub fn remove_peers(&self, peers: &[Peer]) -> (Self, bool) {
-        peers
-            .iter()
-            .fold((self.clone(), false), |(state, changed), peer| {
-                let (state, changed_) = state.remove_peer(peer);
-                (state, changed || changed_)
-            })
-    }
+    (
+        add_transaction_to_pool_without_validation(state, transaction),
+        true,
+    )
 }

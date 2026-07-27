@@ -1,7 +1,7 @@
 use crate::{
     blockchain::{address::Address, validation::is_valid_address},
     p2p::P2PMessage,
-    state::State,
+    state::{State, add_transaction_to_pool},
     update::effect::{Effect, map_effect},
 };
 
@@ -23,7 +23,7 @@ pub fn handle_add_transaction(
         &state.transactions,
         fee,
     ) {
-        let (state, changed) = state.add_transaction(&transaction);
+        let (state, changed) = add_transaction_to_pool(state, &transaction);
         if changed {
             info!("added transaction: {:?}", transaction);
         } else {

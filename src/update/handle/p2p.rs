@@ -2,7 +2,7 @@ use crate::{
     beacon::{BeaconCache, prefetch_beacon},
     blockchain::chain::Chain,
     p2p::{P2PMessage, Peer},
-    state::State,
+    state::{State, add_peers, add_transaction_to_pool},
     update::{
         beacon::prefetch_chain_beacons,
         effect::{Effect, map_effect},
@@ -91,7 +91,7 @@ pub async fn handle_p2p_message(
                 transactions
                     .iter()
                     .fold((state, false), |(state, changed), transaction| {
-                        let (state, changed_) = state.add_transaction(transaction);
+                        let (state, changed_) = add_transaction_to_pool(state, transaction);
                         (state, changed || changed_)
                     });
             (
@@ -104,13 +104,13 @@ pub async fn handle_p2p_message(
         }
         P2PMessage::QueryPeers => (
             match peer_option {
-                Some(peer) => state.add_peer(&peer).0,
+                Some(peer) => add_peers(state.clone(), &[peer]).0,
                 None => state.clone(),
             },
             Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone())),
         ),
         P2PMessage::ResponsePeers(peers) => {
-            let (state, changed) = state.add_peers(&peers);
+            let (state, changed) = add_peers(state, &peers);
             (
                 state.clone(),
                 map_effect(

@@ -113,7 +113,7 @@ mod tests {
             transaction::Transaction,
         },
         p2p::{P2PMessage, Peer},
-        state::State,
+        state::{State, add_peers},
         util::{
             key::{SK, generate_sk},
             signature::SignatureWrapper,
@@ -186,7 +186,7 @@ mod tests {
     async fn add_peer_duplicate_does_not_broadcast() {
         let mut state = funded_state();
         let peer = Peer::new(Ipv4Addr::new(127, 0, 0, 1));
-        state = state.add_peer(&peer).0;
+        state = add_peers(state, &[peer.clone()]).0;
 
         let (next, effect) = run_update(Event::AddPeer(peer.clone()), state.clone()).await;
 
@@ -199,8 +199,8 @@ mod tests {
         let mut state = funded_state();
         let p1 = Peer::new(Ipv4Addr::new(10, 0, 0, 1));
         let p2 = Peer::new(Ipv4Addr::new(10, 0, 0, 2));
-        state = state.add_peer(&p1).0;
-        state = state.add_peer(&p2).0;
+        state = add_peers(state, &[p1.clone()]).0;
+        state = add_peers(state, &[p2.clone()]).0;
 
         let (next, effect) = run_update(Event::RemovePeers(vec![p1.clone()]), state).await;
 
@@ -391,7 +391,7 @@ mod tests {
     async fn query_peers_adds_sender_and_responds_with_known_peers() {
         let mut state = funded_state();
         let existing = Peer::new(Ipv4Addr::new(10, 0, 0, 1));
-        state = state.add_peer(&existing).0;
+        state = add_peers(state, &[existing.clone()]).0;
         let sender = Peer::new(Ipv4Addr::new(10, 0, 0, 2));
 
         let (next, effect) = run_update(
@@ -413,7 +413,7 @@ mod tests {
     async fn query_peers_without_sender_returns_current_list() {
         let mut state = funded_state();
         let existing = Peer::new(Ipv4Addr::new(10, 0, 0, 1));
-        state = state.add_peer(&existing).0;
+        state = add_peers(state, &[existing.clone()]).0;
 
         let (next, effect) = run_update(
             Event::P2PMessage(None, P2PMessage::QueryPeers),
@@ -433,7 +433,7 @@ mod tests {
         let mut state = funded_state();
         let existing = Peer::new(Ipv4Addr::new(10, 0, 0, 1));
         let new_peer = Peer::new(Ipv4Addr::new(10, 0, 0, 2));
-        state = state.add_peer(&existing).0;
+        state = add_peers(state, &[existing.clone()]).0;
 
         let (next, effect) = run_update(
             Event::P2PMessage(None, P2PMessage::ResponsePeers(vec![new_peer.clone()])),
@@ -453,7 +453,7 @@ mod tests {
     async fn response_peers_duplicate_is_ignored() {
         let mut state = funded_state();
         let existing = Peer::new(Ipv4Addr::new(10, 0, 0, 1));
-        state = state.add_peer(&existing).0;
+        state = add_peers(state, &[existing.clone()]).0;
 
         let (next, effect) = run_update(
             Event::P2PMessage(None, P2PMessage::ResponsePeers(vec![existing.clone()])),
