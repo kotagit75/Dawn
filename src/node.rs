@@ -7,32 +7,43 @@ use crate::{
 
 const NODE_KEY_BITS: usize = 512;
 
-const NODE_DIR_PATH: &str = "node";
-const NODE_GITIGNORE_PATH: &str = "node/.gitignore";
-const NODE_KEY_PATH: &str = "node/key.der";
-const NODE_CHAIN_PATH: &str = "node/chain";
+const NODE_GITIGNORE_FILE_NAME: &str = ".gitignore";
+const NODE_KEY_FILE_NAME: &str = "key.der";
+const NODE_CHAIN_FILE_NAME: &str = "chain";
+
+macro_rules! node_path {
+    () => {
+        "node"
+    };
+    ($file:expr) => {
+        format!("{}/{}", node_path!(), $file)
+    };
+}
 
 fn create_node_dir() -> Result<(), io::Error> {
-    std::fs::create_dir(NODE_DIR_PATH)
+    std::fs::create_dir(node_path!())
 }
 
 fn create_gitignore() -> Result<(), io::Error> {
-    std::fs::write(NODE_GITIGNORE_PATH, format!("{}\n", NODE_KEY_PATH))
+    std::fs::write(
+        node_path!(NODE_GITIGNORE_FILE_NAME),
+        format!("{}\n", NODE_KEY_FILE_NAME),
+    )
 }
 
 pub fn load_or_generate_key() -> Result<SK, io::Error> {
     info!("create node directory");
-    if std::fs::metadata(NODE_DIR_PATH).is_err() {
+    if std::fs::metadata(node_path!()).is_err() {
         create_node_dir()
             .inspect_err(|err| error!("failed to create the node directory: {:?}", err))?;
     }
     info!("create gitignore");
-    if std::fs::metadata(NODE_GITIGNORE_PATH).is_err() {
+    if std::fs::metadata(node_path!(NODE_GITIGNORE_FILE_NAME)).is_err() {
         create_gitignore()
             .inspect_err(|err| error!("failed to create the gitignore file: {:?}", err))?;
     }
 
-    if std::fs::metadata(NODE_KEY_PATH).is_ok() {
+    if std::fs::metadata(node_path!(NODE_KEY_FILE_NAME)).is_ok() {
         info!("read node key");
         read_key().inspect_err(|err| {
             error!("failed to read node key: {}", err);
@@ -52,15 +63,15 @@ pub fn generate_key() -> SK {
 }
 
 pub fn read_key() -> Result<SK, io::Error> {
-    std::fs::read_to_string(NODE_KEY_PATH).map(|der| SK { der })
+    std::fs::read_to_string(node_path!(NODE_KEY_FILE_NAME)).map(|der| SK { der })
 }
 
 pub fn save_key(sk: &SK) -> Result<(), io::Error> {
-    std::fs::write(NODE_KEY_PATH, &sk.der)
+    std::fs::write(node_path!(NODE_KEY_FILE_NAME), &sk.der)
 }
 
 pub fn load_or_generate_chain() -> Result<Chain, io::Error> {
-    if std::fs::metadata(NODE_CHAIN_PATH).is_err() {
+    if std::fs::metadata(node_path!(NODE_CHAIN_FILE_NAME)).is_err() {
         info!("generate chain");
         let chain = Chain::new();
         save_chain(&chain).inspect_err(|e| {
@@ -71,9 +82,10 @@ pub fn load_or_generate_chain() -> Result<Chain, io::Error> {
     load_chain()
 }
 pub fn load_chain() -> Result<Chain, io::Error> {
-    std::fs::read(NODE_CHAIN_PATH).and_then(|s| bitcode::decode(&s).map_err(io::Error::other))
+    std::fs::read(node_path!(NODE_CHAIN_FILE_NAME))
+        .and_then(|s| bitcode::decode(&s).map_err(io::Error::other))
 }
 pub fn save_chain(chain: &Chain) -> Result<(), io::Error> {
     let buf = bitcode::encode(chain);
-    std::fs::write(NODE_CHAIN_PATH, buf)
+    std::fs::write(node_path!(NODE_CHAIN_FILE_NAME), buf)
 }
