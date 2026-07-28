@@ -39,7 +39,7 @@ pub fn add_peers(state: State, new_peers: &[Peer]) -> (State, bool) {
     let mut peers = state.peers.clone();
     let mut added = false;
     for new_peer in new_peers {
-        if !peers.contains(&new_peer) && peers.len() <= MAX_PEERS {
+        if !peers.contains(new_peer) && peers.len() <= MAX_PEERS {
             peers.push(new_peer.clone());
             info!("added peer: {}", new_peer.ip);
             added = true;
