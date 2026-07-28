@@ -58,12 +58,12 @@ pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
     match effect {
         Effect::None => Vec::new(),
         Effect::MineBlock(transactions) => {
-            info!("start generate next block");
+            info!("generating next block");
             let next_timestamp = Utc::now().timestamp_millis();
             let Some(beacon) =
                 fetch_beacon(&state.chain.get_latest_block().hash, next_timestamp).await
             else {
-                error!("failed to get beacon");
+                error!("failed to fetch beacon");
                 return vec![Event::MineBlock];
             };
             let now = time::Instant::now();
@@ -75,22 +75,19 @@ pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
                 next_timestamp,
             );
             let block_data_clone = block_data.clone();
-            info!("start calculating vdf solution");
+            debug!("calculating vdf solution");
             let vdf_solution =
                 tokio::task::spawn_blocking(move || solve_block_vdf(&block_data_clone))
                     .await
                     .unwrap()
                     .unwrap();
-            info!("completed calculating vdf solution");
+            debug!("calculated vdf solution");
 
             let block =
                 state
                     .chain
                     .generate_next_block(&state.secret_key, vdf_solution, block_data);
-            info!(
-                "completed generate next block: {}ms",
-                now.elapsed().as_millis()
-            );
+            info!("generated next block: {}ms", now.elapsed().as_millis());
             vec![Event::CompletedMineBlock(block), Event::MineBlock]
         }
         Effect::Broadcast(message) => {

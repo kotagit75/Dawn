@@ -40,7 +40,7 @@ pub async fn handle_completed_mine_block(
     let state = State { chain, ..state };
 
     if changed {
-        info!("completed to add next block");
+        info!("added next block to chain");
     } else {
         error!("failed to add next block");
     }

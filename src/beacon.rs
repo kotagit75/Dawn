@@ -195,25 +195,24 @@ fn choose_locations(latest_block_hash: &Hashed) -> Vec<geojson::Position> {
 
 pub async fn fetch_beacon(latest_block_hash: &Hashed, timestamp: i64) -> Option<Beacon> {
     let locations: Vec<geojson::Position> = choose_locations(latest_block_hash);
-    info!("start getting beacon");
     let mut temperatures: Vec<i32> = Vec::new();
 
     let pb = create_progress_bar(locations.len() as u64);
+    pb.set_message("fetching beacon");
 
     for (i, pos) in locations.iter().enumerate() {
         if let Some(temp) = fetch_temperature(pos[1], pos[0], timestamp).await {
             temperatures.push(temp);
             pb.inc(1);
         } else {
-            error!("failed to get temperature for location {}", i);
-            return None;
+            pb.abandon_with_message(format!("failed to fetch temperature for location {}", i));
+            break;
         }
     }
     if temperatures.len() != locations.len() {
-        error!("failed to get beacon");
         return None;
     }
-    info!("completed getting beacon");
+    pb.abandon_with_message("beacon fetched");
     Some(Beacon {
         values: temperatures,
     })

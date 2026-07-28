@@ -91,17 +91,17 @@ async fn main() {
 }
 
 fn init_state() -> Option<State> {
-    info!("loading node key");
+    debug!("loading node key");
     let Ok(sk) = node::load_or_generate_key() else {
         error!("failed to load node key");
         return None;
     };
-    info!("loading chain");
+    debug!("loading chain");
     let Ok(chain) = node::load_or_generate_chain() else {
         error!("failed to load chain");
         return None;
     };
-    info!("initializing state");
+    debug!("initializing state");
     Some(state::State::new(sk, chain))
 }
 
