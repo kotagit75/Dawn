@@ -9,6 +9,6 @@ pub enum Effect {
     Broadcast(P2PMessage),
 }
 
-pub fn map_effect(effect: impl FnOnce() -> Effect, changed: bool) -> Effect {
-    if changed { effect() } else { Effect::None }
+pub fn when_changed(effect: Effect, changed: bool) -> Effect {
+    if changed { effect } else { Effect::None }
 }

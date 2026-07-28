@@ -5,7 +5,7 @@ use crate::{
     state::{State, add_peers, add_transaction_to_pool},
     update::{
         beacon::prefetch_chain_beacons,
-        effect::{Effect, map_effect},
+        effect::{Effect, when_changed},
     },
 };
 
@@ -57,12 +57,10 @@ pub async fn handle_p2p_message(
                             chain: new_chain,
                             ..state
                         },
-                        map_effect(
-                            || {
-                                Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![
-                                    received_latest_block.clone(),
-                                ]))
-                            },
+                        when_changed(
+                            Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![
+                                received_latest_block.clone(),
+                            ])),
                             changed,
                         ),
                     );
@@ -96,8 +94,8 @@ pub async fn handle_p2p_message(
                     });
             (
                 state.clone(),
-                map_effect(
-                    || Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions)),
+                when_changed(
+                    Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions)),
                     changed,
                 ),
             )
@@ -113,8 +111,8 @@ pub async fn handle_p2p_message(
             let (state, changed) = add_peers(state, &peers);
             (
                 state.clone(),
-                map_effect(
-                    || Effect::Broadcast(P2PMessage::ResponsePeers(state.peers)),
+                when_changed(
+                    Effect::Broadcast(P2PMessage::ResponsePeers(state.peers)),
                     changed,
                 ),
             )

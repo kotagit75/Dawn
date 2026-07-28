@@ -1,14 +1,14 @@
 use crate::{
     p2p::{P2PMessage, Peer},
     state::{State, add_peers},
-    update::effect::{Effect, map_effect},
+    update::effect::{Effect, when_changed},
 };
 
 pub fn handle_add_peer(state: State, new_peer: Peer) -> (State, Effect) {
     let (new_state, added) = add_peers(state, &[new_peer]);
     (
         new_state,
-        map_effect(|| Effect::Broadcast(P2PMessage::QueryPeers), added),
+        when_changed(Effect::Broadcast(P2PMessage::QueryPeers), added),
     )
 }
 

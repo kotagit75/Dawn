@@ -3,7 +3,7 @@ use crate::{
     blockchain::block::{Block, MAX_TRANSACTIONS_PER_BLOCK},
     p2p::P2PMessage,
     state::State,
-    update::effect::{Effect, map_effect},
+    update::effect::{Effect, when_changed},
 };
 
 pub fn handle_mine_block(state: State) -> (State, Effect) {
@@ -47,8 +47,8 @@ pub async fn handle_completed_mine_block(
 
     (
         state,
-        map_effect(
-            || Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![new_block])),
+        when_changed(
+            Effect::Broadcast(P2PMessage::ResponseBlockChain(vec![new_block])),
             changed,
         ),
     )
