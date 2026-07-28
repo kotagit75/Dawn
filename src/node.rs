@@ -5,7 +5,7 @@ use crate::{
     util::key::{SK, generate_sk},
 };
 
-const NODE_KEY_BITS: usize = 512;
+const NODE_KEY_BITS: usize = 2048;
 
 const NODE_GITIGNORE_FILE_NAME: &str = ".gitignore";
 const NODE_KEY_FILE_NAME: &str = "key.der";
