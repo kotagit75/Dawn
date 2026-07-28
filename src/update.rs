@@ -56,7 +56,7 @@ pub async fn update(event: Event, state: State, beacon_cache: &dyn BeaconCache) 
 
 pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
     match effect {
-        Effect::None => {}
+        Effect::None => Vec::new(),
         Effect::MineBlock(transactions) => {
             info!("start generate next block");
             let next_timestamp = Utc::now().timestamp_millis();
@@ -91,13 +91,12 @@ pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
                 "completed generate next block: {}ms",
                 now.elapsed().as_millis()
             );
-            return vec![Event::CompletedMineBlock(block), Event::MineBlock];
+            vec![Event::CompletedMineBlock(block), Event::MineBlock]
         }
         Effect::Broadcast(message) => {
-            return vec![Event::RemovePeers(broadcast(&state.peers, &message).await)];
+            vec![Event::RemovePeers(broadcast(&state.peers, &message).await)]
         }
     }
-    Vec::new()
 }
 
 #[cfg(test)]
