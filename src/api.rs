@@ -1,4 +1,5 @@
 use std::{
+    io::Error,
     net::{Ipv4Addr, SocketAddr},
     str::FromStr,
 };
@@ -54,7 +55,10 @@ async fn dispatch_event(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-pub async fn init_api(event_tx: mpsc::Sender<Command>, state_rx: watch::Receiver<State>) {
+pub async fn init_api(
+    event_tx: mpsc::Sender<Command>,
+    state_rx: watch::Receiver<State>,
+) -> Result<(), Error> {
     let app = Router::new()
         .route("/health", get(handle_query_health))
         .route("/address", get(handle_query_address))
@@ -68,9 +72,9 @@ pub async fn init_api(event_tx: mpsc::Sender<Command>, state_rx: watch::Receiver
         std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
         CONFIG.args.api_port,
     );
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("API server is running on http://{}/", addr);
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await
 }
 
 async fn handle_query_health(extract::State((_, _)): extract::State<AppState>) -> &'static str {

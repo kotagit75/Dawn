@@ -1,4 +1,5 @@
 use std::{
+    io::Error,
     net::{Ipv4Addr, SocketAddr},
     str::FromStr,
 };
@@ -15,7 +16,7 @@ use crate::{
     update::{Command, event::Event},
 };
 
-pub async fn init_p2p(event_tx: mpsc::Sender<Command>) {
+pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
     let app = Router::new()
         .route("/", post(handle_post_message))
         .with_state(event_tx);
@@ -23,14 +24,13 @@ pub async fn init_p2p(event_tx: mpsc::Sender<Command>) {
         std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
         CONFIG.internal_config.p2p_port,
     );
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("P2P server is running on http://{}/", addr);
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
-    .unwrap();
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

@@ -108,10 +108,14 @@ fn init_state() -> Option<State> {
 async fn init_p2p_and_api(state_rx: watch::Receiver<State>, event_tx: mpsc::Sender<Command>) -> () {
     let event_tx_clone = event_tx.clone();
     tokio::spawn(async move {
-        api::init_api(event_tx_clone, state_rx).await;
+        api::init_api(event_tx_clone, state_rx)
+            .await
+            .expect_err("failed to init api");
     });
     tokio::spawn(async move {
-        p2p::init_p2p(event_tx).await;
+        p2p::init_p2p(event_tx)
+            .await
+            .expect_err("failed to init p2p");
     });
 }
 
