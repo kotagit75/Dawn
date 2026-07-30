@@ -53,7 +53,7 @@ async fn handle_post_message(
         event_tx
             .send(Command::Event(Event::P2PMessage(
                 Ipv4Addr::from_str(&peer_addr.ip().to_string())
-                    .map(|ip| Peer::new(ip))
+                    .map(Peer::new)
                     .ok(),
                 message,
             )))
