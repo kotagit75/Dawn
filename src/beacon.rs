@@ -113,13 +113,10 @@ impl BeaconProcess {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
-        let mut child = match child.spawn() {
-            Ok(child) => child,
-            Err(err) => {
-                error!("failed to start beacon process: {}", err);
-                return None;
-            }
-        };
+        let mut child = child
+            .spawn()
+            .inspect_err(|err| error!("failed to start beacon process: {}", err))
+            .ok()?;
 
         let Some(stdin) = child.stdin.take() else {
             error!("failed to open beacon process stdin");

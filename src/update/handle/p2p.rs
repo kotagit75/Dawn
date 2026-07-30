@@ -125,10 +125,9 @@ fn handle_response_transactions(state: State, transactions: Vec<Transaction>) ->
 
 fn handle_query_peers(state: State, peer_option: Option<Peer>) -> (State, Effect) {
     (
-        match peer_option {
-            Some(peer) => add_peers(state.clone(), &[peer]).0,
-            None => state.clone(),
-        },
+        peer_option
+            .map(|peer| add_peers(state.clone(), &[peer]).0)
+            .unwrap_or(state.clone()),
         Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone())),
     )
 }

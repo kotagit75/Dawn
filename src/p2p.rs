@@ -52,10 +52,9 @@ async fn handle_post_message(
     response::Json(
         event_tx
             .send(Command::Event(Event::P2PMessage(
-                match Ipv4Addr::from_str(&peer_addr.ip().to_string()) {
-                    Ok(ip) => Some(Peer::new(ip)),
-                    Err(_) => None,
-                },
+                Ipv4Addr::from_str(&peer_addr.ip().to_string())
+                    .map(|ip| Peer::new(ip))
+                    .ok(),
                 message,
             )))
             .await
@@ -81,18 +80,12 @@ impl Peer {
         )
     }
     pub async fn write(&self, message: &P2PMessage) -> Result<Response, reqwest::Error> {
-        let result = reqwest::Client::new()
+        reqwest::Client::new()
             .post(self.get_url())
             .json(message)
             .send()
-            .await;
-        match result {
-            Err(err) => {
-                error!("failed to send message to peer({}): {:?}", self.ip, err);
-                Err(err)
-            }
-            _ => result,
-        }
+            .await
+            .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.ip, err))
     }
 }
 

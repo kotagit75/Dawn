@@ -69,14 +69,14 @@ impl Chain {
         cache: &dyn BeaconCache,
     ) -> (Self, bool) {
         let previous_block = self.get_latest_block();
-        let beacon_ok = if !i_generated && generated_now {
-            match cache.get(&BeaconKey::new(&previous_block.hash, block.timestamp)) {
-                Some(beacon) => is_valid_beacon(&beacon, &block.beacon),
-                None => false,
-            }
-        } else {
-            true
-        };
+        let beacon_ok = (!i_generated && generated_now)
+            .then(|| {
+                cache
+                    .get(&BeaconKey::new(&previous_block.hash, block.timestamp))
+                    .map(|beacon| is_valid_beacon(&beacon, &block.beacon))
+                    .unwrap_or(false)
+            })
+            .unwrap_or(true);
         let is_valid_new_block = is_valid_new_block(
             &block,
             &previous_block,
