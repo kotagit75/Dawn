@@ -70,7 +70,7 @@ impl Peer {
     pub fn new(ip: Ipv4Addr) -> Self {
         Self { ip }
     }
-    pub fn get_url(&self) -> String {
+    pub fn url(&self) -> String {
         format!(
             "http://{}/",
             SocketAddr::new(
@@ -81,7 +81,7 @@ impl Peer {
     }
     pub async fn write(&self, message: &P2PMessage) -> Result<Response, reqwest::Error> {
         reqwest::Client::new()
-            .post(self.get_url())
+            .post(self.url())
             .json(message)
             .send()
             .await
@@ -94,10 +94,11 @@ pub async fn broadcast(peers: &[Peer], message: &P2PMessage) -> Vec<Peer> {
         let peer_clone = peer.clone();
         let message_clone = message.clone();
         tokio::spawn(async move {
-            match peer_clone.write(&message_clone).await {
-                Ok(_) => None,
-                Err(_) => Some(peer_clone),
-            }
+            peer_clone
+                .write(&message_clone)
+                .await
+                .ok()
+                .map_or(Some(peer_clone), |_| None)
         })
     });
     join_all(tasks)
