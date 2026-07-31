@@ -135,7 +135,8 @@ cargo run -- --help
 ./commands/btfy-cli sendtransaction [address] [amount] [fee]
 
 # add peer
-./commands/btfy-cli addpeer [IP Addr]
+./commands/btfy-cli addpeer [IP Addr]:[port]
+./commands/btfy-cli addpeer 192.0.2.0:62697
 ```
 
 > [!CAUTION]

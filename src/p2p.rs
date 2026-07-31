@@ -1,14 +1,14 @@
 use std::{
     io::Error,
     net::{Ipv4Addr, SocketAddr},
-    str::FromStr,
 };
 
 use ::futures::future::join_all;
-use axum::{Router, extract, response, routing::post};
-use reqwest::Response;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::mpsc,
+};
 
 use crate::{
     CONFIG,
@@ -17,20 +17,21 @@ use crate::{
 };
 
 pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
-    let app = Router::new()
-        .route("/", post(handle_post_message))
-        .with_state(event_tx);
     let addr = SocketAddr::new(
         std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
         CONFIG.internal_config.p2p_port,
     );
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    info!("P2P server is running on http://{}/", addr);
-    axum::serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await
+    info!("P2P server is running on {}", addr);
+    loop {
+        let (mut socket, mut peer_addr) = listener.accept().await?;
+        let mut buf = String::new();
+        socket.read_to_string(&mut buf).await?;
+        if let Ok(message) = serde_json::from_str(&buf) {
+            peer_addr.set_port(CONFIG.internal_config.p2p_port);
+            handle_post_message(event_tx.clone(), peer_addr, message).await;
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -45,47 +46,35 @@ pub enum P2PMessage {
 }
 
 async fn handle_post_message(
-    extract::State(event_tx): extract::State<mpsc::Sender<Command>>,
-    extract::ConnectInfo(peer_addr): extract::ConnectInfo<SocketAddr>,
-    extract::Json(message): extract::Json<P2PMessage>,
-) -> response::Json<bool> {
-    response::Json(
-        event_tx
-            .send(Command::Event(Event::P2PMessage(
-                Ipv4Addr::from_str(&peer_addr.ip().to_string())
-                    .map(Peer::new)
-                    .ok(),
-                message,
-            )))
-            .await
-            .is_ok(),
-    )
+    event_tx: mpsc::Sender<Command>,
+    peer_addr: SocketAddr,
+    message: P2PMessage,
+) -> bool {
+    event_tx
+        .send(Command::Event(Event::P2PMessage(
+            Some(Peer::new(peer_addr.to_string())),
+            message,
+        )))
+        .await
+        .is_ok()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Peer {
-    pub ip: Ipv4Addr,
+    pub addr: String,
 }
 impl Peer {
-    pub fn new(ip: Ipv4Addr) -> Self {
-        Self { ip }
+    pub fn new(addr: String) -> Self {
+        Self { addr }
     }
-    pub fn url(&self) -> String {
-        format!(
-            "http://{}/",
-            SocketAddr::new(
-                std::net::IpAddr::V4(self.ip),
-                CONFIG.internal_config.p2p_port
-            )
-        )
-    }
-    pub async fn write(&self, message: &P2PMessage) -> Result<Response, reqwest::Error> {
-        reqwest::Client::new()
-            .post(self.url())
-            .json(message)
-            .send()
+    pub async fn write(&self, message: &P2PMessage) -> Result<(), Error> {
+        let mut stream = tokio::net::TcpStream::connect(&self.addr).await?;
+        stream
+            .write_all(&serde_json::to_vec(message)?)
             .await
-            .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.ip, err))
+            .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.addr, err))
+            .ok();
+        Ok(())
     }
 }
 

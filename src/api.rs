@@ -1,7 +1,6 @@
 use std::{
     io::Error,
     net::{Ipv4Addr, SocketAddr},
-    str::FromStr,
 };
 
 use axum::{
@@ -132,13 +131,12 @@ async fn handle_command_transaction(
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 struct PeerPayload {
-    ip: String,
+    addr: String,
 }
 async fn handle_command_peer(
     extract::State((event_tx, _)): extract::State<AppState>,
     extract::Json(payload): extract::Json<PeerPayload>,
 ) -> Result<response::Json<UpdateResult>, StatusCode> {
-    let ip = Ipv4Addr::from_str(&payload.ip).map_err(|_| StatusCode::BAD_REQUEST)?;
-    let result = dispatch_event(&event_tx, Event::AddPeer(Peer::new(ip))).await?;
+    let result = dispatch_event(&event_tx, Event::AddPeer(Peer::new(payload.addr))).await?;
     Ok(response::Json(result))
 }

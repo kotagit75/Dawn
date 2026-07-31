@@ -41,10 +41,10 @@ pub fn add_peers(state: State, new_peers: &[Peer]) -> (State, bool) {
     for new_peer in new_peers {
         if !peers.contains(new_peer) && peers.len() <= MAX_PEERS {
             peers.push(new_peer.clone());
-            info!("added peer: {}", new_peer.ip);
+            info!("added peer: {}", new_peer.addr);
             added = true;
         } else {
-            error!("peer already exists: {}", new_peer.ip);
+            error!("peer already exists: {}", new_peer.addr);
         }
     }
     (State { peers, ..state }, added)

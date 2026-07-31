@@ -7,11 +7,7 @@ extern crate regex;
 use clap::Parser;
 use log::Level;
 use serde::Deserialize;
-use std::{
-    net::Ipv4Addr,
-    str::FromStr,
-    sync::{Arc, LazyLock},
-};
+use std::sync::{Arc, LazyLock};
 use tokio::sync::{mpsc, watch};
 
 use crate::{
@@ -51,14 +47,9 @@ async fn main() {
         let _ = event_tx.send(Command::Event(Event::MineBlock)).await;
     }
     if let Some(address) = CONFIG.args.peer.clone() {
-        match Ipv4Addr::from_str(&address) {
-            Ok(ip) => {
-                let _ = event_tx
-                    .send(Command::Event(Event::AddPeer(Peer::new(ip))))
-                    .await;
-            }
-            Err(e) => error!("invalid ip address: {}", e),
-        }
+        let _ = event_tx
+            .send(Command::Event(Event::AddPeer(Peer::new(address))))
+            .await;
     }
 
     while let Some(command) = event_rx.recv().await {
