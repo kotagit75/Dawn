@@ -48,9 +48,7 @@ pub async fn update(event: Event, state: State, beacon_cache: &dyn BeaconCache) 
             handle_p2p_message(state, beacon_cache, peer_option, message).await
         }
         Event::MineBlock => handle_mine_block(state),
-        Event::CompletedMineBlock(new_block) => {
-            handle_completed_mine_block(state, beacon_cache, new_block).await
-        }
+        Event::CompletedMineBlock(new_block) => handle_completed_mine_block(state, new_block).await,
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::{
-    beacon::{BeaconCache, prefetch_beacon},
     blockchain::block::{Block, MAX_TRANSACTIONS_PER_BLOCK},
     p2p::P2PMessage,
     state::State,
@@ -23,20 +22,8 @@ pub fn handle_mine_block(state: State) -> (State, Effect) {
     )
 }
 
-pub async fn handle_completed_mine_block(
-    state: State,
-    beacon_cache: &dyn BeaconCache,
-    new_block: Block,
-) -> (State, Effect) {
-    let _ = prefetch_beacon(
-        beacon_cache,
-        &state.chain.get_latest_block().hash,
-        new_block.timestamp,
-    )
-    .await;
-    let (chain, changed) = state
-        .chain
-        .add_block(new_block.clone(), true, true, beacon_cache);
+pub async fn handle_completed_mine_block(state: State, new_block: Block) -> (State, Effect) {
+    let (chain, changed) = state.chain.add_block(new_block.clone(), None);
     let state = State { chain, ..state };
 
     if changed {
