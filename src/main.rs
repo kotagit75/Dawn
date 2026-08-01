@@ -48,7 +48,7 @@ async fn main() {
     }
     if let Some(address) = CONFIG.args.peer.clone() {
         let _ = event_tx
-            .send(Command::Event(Event::AddPeer(Peer::new(address))))
+            .send(Command::Event(Event::AddPeer(Peer::new(&address))))
             .await;
     }
 

@@ -52,7 +52,7 @@ async fn handle_post_message(
 ) -> bool {
     event_tx
         .send(Command::Event(Event::P2PMessage(
-            Some(Peer::new(peer_addr.to_string())),
+            Some(Peer::new_addr(peer_addr)),
             message,
         )))
         .await
@@ -64,8 +64,15 @@ pub struct Peer {
     pub addr: String,
 }
 impl Peer {
-    pub fn new(addr: String) -> Self {
-        Self { addr }
+    pub fn new(addr: &str) -> Self {
+        Self {
+            addr: addr.to_string(),
+        }
+    }
+    pub fn new_addr(addr: SocketAddr) -> Self {
+        Self {
+            addr: addr.to_string(),
+        }
     }
     pub async fn write(&self, message: &P2PMessage) -> Result<(), Error> {
         let mut stream = tokio::net::TcpStream::connect(&self.addr).await?;

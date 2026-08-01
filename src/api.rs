@@ -137,6 +137,6 @@ async fn handle_command_peer(
     extract::State((event_tx, _)): extract::State<AppState>,
     extract::Json(payload): extract::Json<PeerPayload>,
 ) -> Result<response::Json<UpdateResult>, StatusCode> {
-    let result = dispatch_event(&event_tx, Event::AddPeer(Peer::new(payload.addr))).await?;
+    let result = dispatch_event(&event_tx, Event::AddPeer(Peer::new(&payload.addr))).await?;
     Ok(response::Json(result))
 }

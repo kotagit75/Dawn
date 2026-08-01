@@ -169,7 +169,7 @@ mod tests {
     #[tokio::test]
     async fn add_peer_broadcasts_query_peers_on_change() {
         let state = funded_state();
-        let peer = Peer::new("127.0.0.1:8080".to_string());
+        let peer = Peer::new("127.0.0.1:8080");
 
         let (next, effect) = run_update(Event::AddPeer(peer.clone()), state).await;
 
@@ -180,7 +180,7 @@ mod tests {
     #[tokio::test]
     async fn add_peer_duplicate_does_not_broadcast() {
         let mut state = funded_state();
-        let peer = Peer::new("127.0.0.1:8080".to_string());
+        let peer = Peer::new("127.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&peer)).0;
 
         let (next, effect) = run_update(Event::AddPeer(peer.clone()), state.clone()).await;
@@ -192,8 +192,8 @@ mod tests {
     #[tokio::test]
     async fn remove_peers_removes_and_broadcasts_query_peers() {
         let mut state = funded_state();
-        let p1 = Peer::new("10.0.0.1:8080".to_string());
-        let p2 = Peer::new("10.0.0.2:8080".to_string());
+        let p1 = Peer::new("10.0.0.1:8080");
+        let p2 = Peer::new("10.0.0.2:8080");
         state = add_peers(state, std::slice::from_ref(&p1)).0;
         state = add_peers(state, std::slice::from_ref(&p2)).0;
 
@@ -385,9 +385,9 @@ mod tests {
     #[tokio::test]
     async fn query_peers_adds_sender_and_responds_with_known_peers() {
         let mut state = funded_state();
-        let existing = Peer::new("10.0.0.1:8080".to_string());
+        let existing = Peer::new("10.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
-        let sender = Peer::new("10.0.0.2:8080".to_string());
+        let sender = Peer::new("10.0.0.2:8080");
 
         let (next, effect) = run_update(
             Event::P2PMessage(Some(sender.clone()), P2PMessage::QueryPeers),
@@ -407,7 +407,7 @@ mod tests {
     #[tokio::test]
     async fn query_peers_without_sender_returns_current_list() {
         let mut state = funded_state();
-        let existing = Peer::new("10.0.0.1:8080".to_string());
+        let existing = Peer::new("10.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
 
         let (next, effect) = run_update(
@@ -426,8 +426,8 @@ mod tests {
     #[tokio::test]
     async fn response_peers_merges_and_rebroadcasts() {
         let mut state = funded_state();
-        let existing = Peer::new("10.0.0.1:8080".to_string());
-        let new_peer = Peer::new("10.0.0.2:8080".to_string());
+        let existing = Peer::new("10.0.0.1:8080");
+        let new_peer = Peer::new("10.0.0.2:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
 
         let (next, effect) = run_update(
@@ -447,7 +447,7 @@ mod tests {
     #[tokio::test]
     async fn response_peers_duplicate_is_ignored() {
         let mut state = funded_state();
-        let existing = Peer::new("10.0.0.1:8080".to_string());
+        let existing = Peer::new("10.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
 
         let (next, effect) = run_update(
