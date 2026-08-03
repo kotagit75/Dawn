@@ -8,8 +8,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [141.7974528, 45.3995654]
-      }
+        "coordinates": [
+          141.7974528,
+          45.3995654
+        ]
+      },
+      "icao_code": "RJCW"
     },
     {
       "type": "Feature",
@@ -18,8 +22,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [142.446865, 43.67147493]
-      }
+        "coordinates": [
+          142.446865,
+          43.67147493
+        ]
+      },
+      "icao_code": "RJEC"
     },
     {
       "type": "Feature",
@@ -28,8 +36,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [144.1962358, 43.04503509]
-      }
+        "coordinates": [
+          144.1962358,
+          43.04503509
+        ]
+      },
+      "icao_code": "RJCK"
     },
     {
       "type": "Feature",
@@ -38,8 +50,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [143.2177867, 42.73121032]
-      }
+        "coordinates": [
+          143.2177867,
+          42.73121032
+        ]
+      },
+      "icao_code": "RJCB"
     },
     {
       "type": "Feature",
@@ -48,8 +64,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [141.3802179, 43.11577495]
-      }
+        "coordinates": [
+          141.3802179,
+          43.11577495
+        ]
+      },
+      "icao_code": "RJCO"
     },
     {
       "type": "Feature",
@@ -58,8 +78,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [141.6860269, 42.77899571]
-      }
+        "coordinates": [
+          141.6860269,
+          42.77899571
+        ]
+      },
+      "icao_code": "RJCC"
     },
     {
       "type": "Feature",
@@ -68,8 +92,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.8161369, 41.7754762]
-      }
+        "coordinates": [
+          140.8161369,
+          41.7754762
+        ]
+      },
+      "icao_code": "RJCH"
     },
     {
       "type": "Feature",
@@ -78,8 +106,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.6902087, 40.73545867]
-      }
+        "coordinates": [
+          140.6902087,
+          40.73545867
+        ]
+      },
+      "icao_code": "RJSA"
     },
     {
       "type": "Feature",
@@ -88,8 +120,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.2176736, 39.61432074]
-      }
+        "coordinates": [
+          140.2176736,
+          39.61432074
+        ]
+      },
+      "icao_code": "RJSK"
     },
     {
       "type": "Feature",
@@ -98,8 +134,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [141.1384845, 39.42148821]
-      }
+        "coordinates": [
+          141.1384845,
+          39.42148821
+        ]
+      },
+      "icao_code": "RJSI"
     },
     {
       "type": "Feature",
@@ -108,8 +148,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.9170924, 38.13993289]
-      }
+        "coordinates": [
+          140.9170924,
+          38.13993289
+        ]
+      },
+      "icao_code": "RJSS"
     },
     {
       "type": "Feature",
@@ -118,8 +162,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.3703334, 38.41209636]
-      }
+        "coordinates": [
+          140.3703334,
+          38.41209636
+        ]
+      },
+      "icao_code": "RJSC"
     },
     {
       "type": "Feature",
@@ -128,8 +176,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.4282886, 37.2284081]
-      }
+        "coordinates": [
+          140.4282886,
+          37.2284081
+        ]
+      },
+      "icao_code": "RJSF"
     },
     {
       "type": "Feature",
@@ -138,8 +190,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [139.1114496, 37.95505405]
-      }
+        "coordinates": [
+          139.1114496,
+          37.95505405
+        ]
+      },
+      "icao_code": "RJSN"
     },
     {
       "type": "Feature",
@@ -148,8 +204,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [137.9264258, 36.16462046]
-      }
+        "coordinates": [
+          137.9264258,
+          36.16462046
+        ]
+      },
+      "icao_code": "RJAF"
     },
     {
       "type": "Feature",
@@ -158,8 +218,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [140.3848188, 35.77073692]
-      }
+        "coordinates": [
+          140.3848188,
+          35.77073692
+        ]
+      },
+      "icao_code": "RJAA"
     },
     {
       "type": "Feature",
@@ -168,8 +232,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [139.7791314, 35.548171]
-      }
+        "coordinates": [
+          139.7791314,
+          35.548171
+        ]
+      },
+      "icao_code": "RJTT"
     },
     {
       "type": "Feature",
@@ -178,8 +246,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [138.1853326, 34.79653615]
-      }
+        "coordinates": [
+          138.1853326,
+          34.79653615
+        ]
+      },
+      "icao_code": "RJNS"
     },
     {
       "type": "Feature",
@@ -188,8 +260,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [136.8101604, 34.85720324]
-      }
+        "coordinates": [
+          136.8101604,
+          34.85720324
+        ]
+      },
+      "icao_code": "RJGG"
     },
     {
       "type": "Feature",
@@ -198,8 +274,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [135.4381271, 34.78606811]
-      }
+        "coordinates": [
+          135.4381271,
+          34.78606811
+        ]
+      },
+      "icao_code": "RJOO"
     },
     {
       "type": "Feature",
@@ -208,8 +288,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [135.2367959, 34.43197865]
-      }
+        "coordinates": [
+          135.2367959,
+          34.43197865
+        ]
+      },
+      "icao_code": "RJBB"
     },
     {
       "type": "Feature",
@@ -218,8 +302,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [135.2267252, 34.63507139]
-      }
+        "coordinates": [
+          135.2267252,
+          34.63507139
+        ]
+      },
+      "icao_code": "RJBE"
     },
     {
       "type": "Feature",
@@ -228,8 +316,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [134.0146539, 34.21484194]
-      }
+        "coordinates": [
+          134.0146539,
+          34.21484194
+        ]
+      },
+      "icao_code": "RJOT"
     },
     {
       "type": "Feature",
@@ -238,8 +330,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [133.6739953, 33.5476357]
-      }
+        "coordinates": [
+          133.6739953,
+          33.5476357
+        ]
+      },
+      "icao_code": "VOCI"
     },
     {
       "type": "Feature",
@@ -248,8 +344,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [132.9207516, 34.43731367]
-      }
+        "coordinates": [
+          132.9207516,
+          34.43731367
+        ]
+      },
+      "icao_code": "RJOA"
     },
     {
       "type": "Feature",
@@ -258,8 +358,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [132.7003022, 33.8277126]
-      }
+        "coordinates": [
+          132.7003022,
+          33.8277126
+        ]
+      },
+      "icao_code": "RJOM"
     },
     {
       "type": "Feature",
@@ -268,8 +372,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [131.2786026, 33.93127097]
-      }
+        "coordinates": [
+          131.2786026,
+          33.93127097
+        ]
+      },
+      "icao_code": "RJDC"
     },
     {
       "type": "Feature",
@@ -278,8 +386,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [130.4500511, 33.58561376]
-      }
+        "coordinates": [
+          130.4500511,
+          33.58561376
+        ]
+      },
+      "icao_code": "RJFF"
     },
     {
       "type": "Feature",
@@ -288,8 +400,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [129.9170527, 32.91489785]
-      }
+        "coordinates": [
+          129.9170527,
+          32.91489785
+        ]
+      },
+      "icao_code": "RJFU"
     },
     {
       "type": "Feature",
@@ -298,8 +414,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [131.7362115, 33.47958263]
-      }
+        "coordinates": [
+          131.7362115,
+          33.47958263
+        ]
+      },
+      "icao_code": "RJFO"
     },
     {
       "type": "Feature",
@@ -308,8 +428,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [130.8588813, 32.83497974]
-      }
+        "coordinates": [
+          130.8588813,
+          32.83497974
+        ]
+      },
+      "icao_code": "RJFT"
     },
     {
       "type": "Feature",
@@ -318,8 +442,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [130.7202485, 31.80072839]
-      }
+        "coordinates": [
+          130.7202485,
+          31.80072839
+        ]
+      },
+      "icao_code": "RJFK"
     },
     {
       "type": "Feature",
@@ -328,8 +456,12 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [127.6467932, 26.19990739]
-      }
+        "coordinates": [
+          127.6467932,
+          26.19990739
+        ]
+      },
+      "icao_code": "ROAH"
     }
   ]
 }

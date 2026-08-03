@@ -46,7 +46,7 @@ select_temperature() {
         ' <<<"$json"
 }
 
-while read -r lat lon ts; do
+while read -r lat lon icao_code ts; do
     json=$(fetch_open_meteo "$lat" "$lon" "$ts")
     temp=$(select_temperature "$json" "$ts")
 

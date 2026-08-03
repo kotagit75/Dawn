@@ -71,20 +71,44 @@ impl BeaconCache for InMemoryBeaconCache {
     }
 }
 
+#[derive(Debug, Clone)]
+struct BeaconLocation {
+    lat: f64,
+    lon: f64,
+    icao_code: String,
+}
 const LOCATIONS_GEOJSON: &str = include_str!("beacon/locations.geojson");
-static LOCATIONS_LOCATIONS: LazyLock<Vec<geojson::Position>> = LazyLock::new(|| {
+static LOCATIONS_LOCATIONS: LazyLock<Vec<BeaconLocation>> = LazyLock::new(|| {
     let Ok(collection) = LOCATIONS_GEOJSON.parse::<FeatureCollection>() else {
         return Vec::new();
     };
-    collection
+    let locations = collection
         .features
         .iter()
-        .flat_map(|feature| feature.geometry.clone())
-        .flat_map(|geometry| match geometry.value {
-            GeometryValue::Point { coordinates } => Some(coordinates),
-            _ => None,
-        })
-        .collect()
+        .flat_map(|feature| feature.geometry.clone());
+
+    let mut result = Vec::new();
+    for location in locations {
+        let (lat, lon) = match location.value {
+            GeometryValue::Point { coordinates } => (coordinates[1], coordinates[0]),
+            _ => continue,
+        };
+
+        let icao_code = match location.foreign_members {
+            Some(foreign_members) => foreign_members.get("icao_code").cloned(),
+            None => continue,
+        };
+        let Some(icao_code) = icao_code else {
+            continue;
+        };
+
+        result.push(BeaconLocation {
+            lat,
+            lon,
+            icao_code: icao_code.to_string(),
+        });
+    }
+    result
 });
 
 #[derive(Debug, Deserialize)]
@@ -134,12 +158,18 @@ impl BeaconProcess {
         })
     }
 
-    async fn fetch_temperature(&mut self, lat: f64, lon: f64, timestamp: i64) -> Option<i32> {
+    async fn fetch_temperature(
+        &mut self,
+        lat: f64,
+        lon: f64,
+        icao_code: &str,
+        timestamp: i64,
+    ) -> Option<i32> {
         let timeout_duration = std::time::Duration::from_secs(CONFIG.args.beacon_timeout);
 
         timeout(timeout_duration, async {
             self.stdin
-                .write_all(format!("{} {} {}\n", lat, lon, timestamp).as_bytes())
+                .write_all(format!("{} {} {} {}\n", lat, lon, icao_code, timestamp).as_bytes())
                 .await
                 .ok()?;
             self.stdin.flush().await.ok()?;
@@ -163,13 +193,17 @@ impl BeaconProcess {
 static BEACON_PROCESS: LazyLock<AsyncMutex<Option<BeaconProcess>>> =
     LazyLock::new(|| AsyncMutex::new(None));
 
-async fn fetch_temperature(lat: f64, lon: f64, timestamp: i64) -> Option<i32> {
+async fn fetch_temperature(lat: f64, lon: f64, icao_code: &str, timestamp: i64) -> Option<i32> {
     let mut guard = BEACON_PROCESS.lock().await;
     if guard.is_none() {
         *guard = BeaconProcess::spawn();
     }
     let result = match guard.as_mut() {
-        Some(process) => process.fetch_temperature(lat, lon, timestamp).await,
+        Some(process) => {
+            process
+                .fetch_temperature(lat, lon, icao_code, timestamp)
+                .await
+        }
         None => None,
     };
     if result.is_none() {
@@ -178,7 +212,7 @@ async fn fetch_temperature(lat: f64, lon: f64, timestamp: i64) -> Option<i32> {
     result
 }
 
-fn choose_locations(latest_block_hash: &Hashed) -> Vec<geojson::Position> {
+fn choose_locations(latest_block_hash: &Hashed) -> Vec<BeaconLocation> {
     let len = LOCATIONS_LOCATIONS.len();
     if len == 0 {
         return Vec::new();
@@ -191,14 +225,16 @@ fn choose_locations(latest_block_hash: &Hashed) -> Vec<geojson::Position> {
 }
 
 pub async fn fetch_beacon(latest_block_hash: &Hashed, timestamp: i64) -> Option<Beacon> {
-    let locations: Vec<geojson::Position> = choose_locations(latest_block_hash);
+    let locations: Vec<_> = choose_locations(latest_block_hash);
     let mut temperatures: Vec<i32> = Vec::new();
 
     let pb = create_progress_bar(locations.len() as u64);
     pb.set_message("fetching beacon");
 
-    for (i, pos) in locations.iter().enumerate() {
-        if let Some(temp) = fetch_temperature(pos[1], pos[0], timestamp).await {
+    for (i, location) in locations.iter().enumerate() {
+        if let Some(temp) =
+            fetch_temperature(location.lat, location.lon, &location.icao_code, timestamp).await
+        {
             temperatures.push(temp);
             pb.inc(1);
         } else {
