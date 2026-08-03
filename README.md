@@ -144,7 +144,6 @@ cargo run -- --help
 
 ## 📚 Documents
 - [docs/installation.md](docs/installation.md)
-- [docs/temperature_script_example.md](docs/temperature_script_example.md)
 - [FAQs](docs/faq.md)
 
 ## 📍 Locations which is collected temperature data
