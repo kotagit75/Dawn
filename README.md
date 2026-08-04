@@ -139,7 +139,7 @@ cargo run -- --help
 ./commands/btfy-cli addpeer 192.0.2.0:62697
 ```
 
-> [!CAUTION]
+> [!WARNING]
 > **Usage of External APIs** When using external weather APIs through options such as `--beacon-cmd`, it is the user's responsibility to comply with the terms of use and licenses of each API. Please ensure they are used within the limits set by each provider.
 
 > [!CAUTION]
