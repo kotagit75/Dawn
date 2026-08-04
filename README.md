@@ -143,7 +143,7 @@ cargo run -- --help
 > **Usage of External APIs** When using external weather APIs through options such as `--beacon-cmd`, it is the user's responsibility to comply with the terms of use and licenses of each API. Please ensure they are used within the limits set by each provider.
 
 > [!CAUTION]
-> No Guarantee of Monetary Value The "Btfy" project is currently in its development. Any tokens (UTXOs) generated or utilized within this network are intended solely for the technical verification of the unique "Proof of Weather" consensus and overall system stability. They do not represent, nor do they guarantee, any real-world monetary value, convertibility to legal tender, or purchasing power.
+> **No Guarantee of Monetary Value** The "Btfy" project is currently in its development. Any tokens (UTXOs) generated or utilized within this network are intended solely for the technical verification of the unique "Proof of Weather" consensus and overall system stability. They do not represent, nor do they guarantee, any real-world monetary value, convertibility to legal tender, or purchasing power.
 
 ## 📚 Documents
 - [docs/installation.md](docs/installation.md)
