@@ -1,7 +1,6 @@
 use std::sync::LazyLock;
 
 use clap::Parser;
-use serde::Deserialize;
 
 pub const P2P_PORT: u16 = 62697;
 pub const VDF_DIFFICULTY: u64 = 5295676;
@@ -29,7 +28,7 @@ pub struct Args {
     #[arg(long = "beacon-cmd", num_args = 1.., value_name = "CMD")]
     pub beacon_cmd: Vec<String>,
 }
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct InternalConfig {
     pub p2p_port: u16,
     pub vdf_difficulty: u64,
