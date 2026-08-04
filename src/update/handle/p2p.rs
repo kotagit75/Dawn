@@ -67,7 +67,7 @@ async fn handle_response_block_chain(
                 .chain
                 .add_block(received_latest_block.clone(), Some(beacon_cache));
             if changed {
-                info!("added block: {:?}", received_latest_block);
+                info!("added block to chain");
             }
             return (
                 State {
