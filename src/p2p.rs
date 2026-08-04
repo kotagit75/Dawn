@@ -4,6 +4,7 @@ use std::{
 };
 
 use ::futures::future::join_all;
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -25,16 +26,16 @@ pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
     info!("P2P server is running on {}", addr);
     loop {
         let (mut socket, mut peer_addr) = listener.accept().await?;
-        let mut buf = String::new();
-        socket.read_to_string(&mut buf).await?;
-        if let Ok(message) = serde_json::from_str(&buf) {
+        let mut buf: Vec<u8> = Vec::new();
+        socket.read_to_end(&mut buf).await?;
+        if let Ok(message) = bitcode::decode::<P2PMessage>(&buf) {
             peer_addr.set_port(CONFIG.internal_config.p2p_port);
             handle_post_message(event_tx.clone(), peer_addr, message).await;
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq)]
 pub enum P2PMessage {
     QueryLatest,
     QueryAll,
@@ -59,7 +60,7 @@ async fn handle_post_message(
         .is_ok()
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq, Eq)]
 pub struct Peer {
     pub addr: String,
 }
@@ -77,7 +78,7 @@ impl Peer {
     pub async fn write(&self, message: &P2PMessage) -> Result<(), Error> {
         let mut stream = tokio::net::TcpStream::connect(&self.addr).await?;
         stream
-            .write_all(&serde_json::to_vec(message)?)
+            .write_all(&bitcode::encode(message))
             .await
             .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.addr, err))
             .ok();
