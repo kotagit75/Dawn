@@ -14,7 +14,7 @@ pub async fn run_effect(state: State, effect: Effect) -> Vec<Event> {
         Effect::None => Vec::new(),
         Effect::MineBlock(transactions) => {
             info!("generating next block");
-            let next_timestamp = Utc::now().timestamp_millis();
+            let next_timestamp = Utc::now().timestamp();
             let Some(beacon) =
                 fetch_beacon(&state.chain.get_latest_block().hash, next_timestamp).await
             else {

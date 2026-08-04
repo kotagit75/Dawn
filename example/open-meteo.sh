@@ -9,15 +9,15 @@ fetch_open_meteo() {
     local lon="$2"
     local ts="$3"
 
-    local day
-    day=$(date -u -d "@$ts" +%F)
+    local time
+    time=$(date -u -d "@$ts" +%F)
 
     curl -sS -A "$USER_AGENT" -G \
         "https://archive-api.open-meteo.com/v1/archive" \
         --data-urlencode "latitude=$lat" \
         --data-urlencode "longitude=$lon" \
-        --data-urlencode "start_date=$day" \
-        --data-urlencode "end_date=$day" \
+        --data-urlencode "start_date=$time" \
+        --data-urlencode "end_date=$time" \
         --data-urlencode "hourly=temperature_2m"
 }
 
