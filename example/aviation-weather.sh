@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+USER_AGENT="btfy-temperature-fetcher/1.0"
+
 fetch_temperature() {
     local icao_code="${1^^}"
     local timestamp="$2"
@@ -14,7 +16,7 @@ fetch_temperature() {
     response=$(
         curl --fail --silent --show-error \
             --get 'https://aviationweather.gov/api/data/metar' \
-            --user-agent 'get_temp/1.0' \
+            --user-agent "$USER_AGENT" \
             --data-urlencode "ids=${icao_code}" \
             --data-urlencode "date=${time}" \
             --data-urlencode 'format=json'

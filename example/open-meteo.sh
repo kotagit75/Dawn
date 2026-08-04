@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-USER_AGENT="btfy-temperature-server/1.0"
+USER_AGENT="btfy-temperature-fetcher/1.0"
 
 fetch_open_meteo() {
     local lat="$1"
