@@ -4,25 +4,25 @@ extern crate simple_logger as logger;
 
 extern crate regex;
 
-use clap::Parser;
 use log::Level;
-use serde::Deserialize;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
 use crate::{
     beacon::InMemoryBeaconCache,
-    config::{P2P_PORT, VDF_DIFFICULTY},
+    config::CONFIG,
+    effect::run_effect,
     node::save_chain,
     p2p::Peer,
     state::State,
-    update::{Command, UpdateResult, event::Event, run_effect, update},
+    update::{Command, UpdateResult, event::Event, update},
 };
 
 pub mod api;
 pub mod beacon;
 pub mod blockchain;
 pub mod config;
+pub mod effect;
 pub mod node;
 pub mod p2p;
 pub mod state;
@@ -109,48 +109,3 @@ async fn init_p2p_and_api(state_rx: watch::Receiver<State>, event_tx: mpsc::Send
             .expect_err("failed to init p2p");
     });
 }
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Whether to mine blocks
-    #[arg(short, long)]
-    mining: bool,
-
-    /// The IP address to add to the peer list
-    #[arg(short, long)]
-    peer: Option<String>,
-
-    /// The port to listen on for the API
-    #[arg(short, long, default_value = "8080")]
-    api_port: u16,
-
-    /// The timeout for API requests in seconds
-    #[arg(short, long, default_value = "5")]
-    beacon_timeout: u64,
-
-    /// Beacon provider command to run over stdio
-    #[arg(long = "beacon-cmd", num_args = 1.., value_name = "CMD")]
-    beacon_cmd: Vec<String>,
-}
-#[derive(Debug, Clone, Deserialize)]
-pub struct InternalConfig {
-    pub p2p_port: u16,
-    pub vdf_difficulty: u64,
-}
-pub struct Config {
-    args: Args,
-    internal_config: InternalConfig,
-}
-
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
-    let args = Args::parse();
-
-    Config {
-        args,
-        internal_config: InternalConfig {
-            p2p_port: P2P_PORT,
-            vdf_difficulty: VDF_DIFFICULTY,
-        },
-    }
-});

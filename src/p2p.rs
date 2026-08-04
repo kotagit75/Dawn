@@ -11,8 +11,8 @@ use tokio::{
 };
 
 use crate::{
-    CONFIG,
     blockchain::{block::Block, transaction::Transaction},
+    config::CONFIG,
     update::{Command, event::Event},
 };
 
