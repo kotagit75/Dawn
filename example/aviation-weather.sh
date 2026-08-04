@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# Fetches temperature from Aviation Weather Center (METAR) for a given ICAO and timestamp.
+# Data source: Aviation Weather Center (NOAA/NWS) — https://aviationweather.gov
+# Use of this data is subject to the provider's terms. Confirm licensing and attribution requirements before redistribution.
+
+set -euo pipefail
+
 USER_AGENT="btfy-temperature-fetcher/1.0"
 
 fetch_temperature() {

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Fetches temperature from Open-Meteo archive API for given lat/lon and timestamp.
+# Data source: Open-Meteo — https://open-meteo.com
+# Use of this data is subject to the provider's terms. Confirm licensing and attribution requirements before redistribution.
+
 set -euo pipefail
 
 USER_AGENT="btfy-temperature-fetcher/1.0"
