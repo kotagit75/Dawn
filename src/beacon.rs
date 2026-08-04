@@ -14,7 +14,7 @@ use tokio::{
 };
 
 use crate::{
-    CONFIG,
+    config::CONFIG,
     util::{hash::Hashed, progressbar::create_progress_bar},
 };
 
@@ -82,22 +82,26 @@ static LOCATIONS_LOCATIONS: LazyLock<Vec<BeaconLocation>> = LazyLock::new(|| {
     let Ok(collection) = LOCATIONS_GEOJSON.parse::<FeatureCollection>() else {
         return Vec::new();
     };
-    let locations = collection
-        .features
-        .iter()
-        .flat_map(|feature| feature.geometry.clone());
+    let features = collection.features;
 
     let mut result = Vec::new();
-    for location in locations {
-        let (lat, lon) = match location.value {
+    for feature in features {
+        let Some(geometry) = feature.geometry else {
+            continue;
+        };
+        let Some(properties) = feature.properties else {
+            continue;
+        };
+        let (lat, lon) = match geometry.value {
             GeometryValue::Point { coordinates } => (coordinates[1], coordinates[0]),
             _ => continue,
         };
 
-        let icao_code = match location.foreign_members {
-            Some(foreign_members) => foreign_members.get("icao_code").cloned(),
+        let icao_code = match properties.get("icao_code") {
+            Some(code) => code.as_str(),
             None => continue,
         };
+
         let Some(icao_code) = icao_code else {
             continue;
         };
