@@ -20,7 +20,7 @@ use crate::{
 pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
     let addr = SocketAddr::new(
         std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        CONFIG.internal_config.p2p_port,
+        CONFIG.args.p2p_port,
     );
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("P2P server is running on {}", addr);
@@ -28,9 +28,9 @@ pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
         let (mut socket, mut peer_addr) = listener.accept().await?;
         let mut buf: Vec<u8> = Vec::new();
         socket.read_to_end(&mut buf).await?;
-        if let Ok(message) = bitcode::decode::<P2PMessage>(&buf) {
-            peer_addr.set_port(CONFIG.internal_config.p2p_port);
-            handle_post_message(event_tx.clone(), peer_addr, message).await;
+        if let Ok(payload) = bitcode::decode::<P2PMessagePayload>(&buf) {
+            peer_addr.set_port(payload.port);
+            handle_post_message(event_tx.clone(), peer_addr, payload.message).await;
         }
     }
 }
@@ -44,6 +44,12 @@ pub enum P2PMessage {
     ResponseBlockChain(Vec<Block>),
     ResponseTransactions(Vec<Transaction>),
     ResponsePeers(Vec<Peer>),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq)]
+pub struct P2PMessagePayload {
+    pub message: P2PMessage,
+    pub port: u16,
 }
 
 async fn handle_post_message(
@@ -76,9 +82,13 @@ impl Peer {
         }
     }
     pub async fn write(&self, message: &P2PMessage) -> Result<(), Error> {
+        let payload = P2PMessagePayload {
+            message: message.clone(),
+            port: CONFIG.args.p2p_port,
+        };
         let mut stream = tokio::net::TcpStream::connect(&self.addr).await?;
         stream
-            .write_all(&bitcode::encode(message))
+            .write_all(&bitcode::encode(&payload))
             .await
             .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.addr, err))
             .ok();
