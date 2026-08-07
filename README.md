@@ -103,7 +103,7 @@ cargo run -- --mining --beacon-cmd example/open-meteo.sh
 git clone https://github.com/kotagit75/btfy.git
 cd btfy
 docker build ./ -t btfy
-docker run -p 8080:8080 -p 62697:62697 --network=host -t btfy:latest
+docker run --network=host -t btfy:latest --mining
 ```
 
 ### Usage
