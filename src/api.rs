@@ -61,6 +61,7 @@ pub async fn init_api(
     let app = Router::new()
         .route("/health", get(handle_query_health))
         .route("/address", get(handle_query_address))
+        .route("/peers", get(handle_query_peers))
         .route("/chain", get(handle_query_chain))
         .route("/balance", get(handle_query_balance))
         .route("/balance/{address}", get(handle_query_balance_with_address))
@@ -82,6 +83,12 @@ async fn handle_query_health(extract::State((_, _)): extract::State<AppState>) -
 
 async fn handle_query_address(extract::State((_, state_rx)): extract::State<AppState>) -> String {
     read_state(&state_rx, |state| state.address.der.clone())
+}
+
+async fn handle_query_peers(
+    extract::State((_, state_rx)): extract::State<AppState>,
+) -> response::Json<Vec<Peer>> {
+    json_query(&state_rx, |state| state.peers.clone())
 }
 
 async fn handle_query_chain(

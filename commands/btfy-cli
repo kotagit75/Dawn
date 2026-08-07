@@ -7,6 +7,9 @@ health)
 getaddress)
     curl -X GET localhost:8080/address
     ;;
+getpeers)
+    curl -X GET localhost:8080/peers
+    ;;
 getbalance)
     curl -X GET localhost:8080/balance
     ;;
