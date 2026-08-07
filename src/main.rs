@@ -36,7 +36,6 @@ async fn main() {
     let Some(mut state) = init_state() else {
         return;
     };
-    debug!("address: {}", state.address.der);
 
     let (event_tx, mut event_rx) = mpsc::channel(256);
     let (state_tx, state_rx) = watch::channel(state.clone());
