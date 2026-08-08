@@ -19,7 +19,6 @@ services:
       --p2p-port 62697
       --beacon-cmd temperature.sh
       --mining
-      --peer 172.28.0.2:62698
     ports:
       - "8080:8080"
       - "62697:62697"

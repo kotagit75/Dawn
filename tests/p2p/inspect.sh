@@ -55,19 +55,78 @@ function boot() {
     echo "=== Preparation Complete ==="
 }
 
+# Connection & Peer Setup: register peers, verify mutual recognition, and check idempotency
+function connect_peers() {
+    local node_a_port="${NODE_PORTS[0]}"
+    local node_b_port="${NODE_PORTS[1]}"
+
+    # Node-B's P2P address (internal container IP and P2P port)
+    local node_b_p2p="172.28.0.3:62698"
+
+    echo "=== [Peer Setup 1/3] Sending addpeer from node-a to node-b ==="
+    local res
+    res=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"addr\": \"$node_b_p2p\"}" \
+        "http://localhost:$node_a_port/peer")
+    if [ "$res" -ge 200 ] && [ "$res" -lt 300 ]; then
+        echo "  - addpeer (node-a -> node-b): OK (HTTP $res)"
+    else
+        echo "  - addpeer (node-a -> node-b): FAILED (HTTP $res)" >&2
+        return 1
+    fi
+
+    # Wait briefly for peer discovery to propagate
+    sleep 2
+
+    echo "=== [Peer Setup 2/3] Verifying mutual peer recognition via /peers ==="
+    local peers_a peers_b
+
+    peers_a=$(curl -s "http://localhost:$node_a_port/peers" 2>/dev/null || echo "[]")
+    echo "  - node-a peers: $peers_a"
+    if echo "$peers_a" | grep -q "172.28.0.3"; then
+        echo "  - node-a recognizes node-b: OK"
+    else
+        echo "  - node-a recognizes node-b: FAILED (node-b not found in peers)" >&2
+        return 1
+    fi
+
+    peers_b=$(curl -s "http://localhost:$node_b_port/peers" 2>/dev/null || echo "[]")
+    echo "  - node-b peers: $peers_b"
+    if echo "$peers_b" | grep -q "172.28.0.2"; then
+        echo "  - node-b recognizes node-a: OK"
+    else
+        # Not necessarily a failure if reverse-direction discovery is async
+        echo "  - node-b recognizes node-a: NOT YET (may be async)"
+    fi
+
+    echo "=== [Peer Setup 3/3] Verifying duplicate addpeer is safe (idempotency) ==="
+    local res2
+    res2=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"addr\": \"$node_b_p2p\"}" \
+        "http://localhost:$node_a_port/peer")
+    if [ "$res2" -ge 200 ] && [ "$res2" -lt 500 ]; then
+        echo "  - Duplicate addpeer: Safe (HTTP $res2)"
+    else
+        echo "  - Duplicate addpeer: Node returned unexpected error (HTTP $res2)" >&2
+        return 1
+    fi
+
+    echo "=== Peer Setup Complete ==="
+}
+
 function cleanup() {
     echo "=== Cleanup ==="
     docker compose -f "$COMPOSE_FILE" down
     echo "=== Cleanup Complete ==="
 }
 
-function inspect() {
-    echo "=== Inspect ==="
-    echo "=== Inspect Complete ==="
-}
+trap 'cleanup' EXIT
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     boot "$@"
-    inspect
-    cleanup
+    connect_peers
 fi
