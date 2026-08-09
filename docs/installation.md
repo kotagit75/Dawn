@@ -18,5 +18,5 @@ Even without using an API, it is possible to conduct observations by placing sen
 ### Run
 Run btfy.
 ```bash
-cargo run -- --mining --beacon-cmd example/open-meteo.sh
+cargo run -- --mining --beacon-cmd example/open-meteo.sh --vdf-difficulty 100
 ```
