@@ -23,7 +23,7 @@ sendtransaction)
     curl -X POST -H "Content-Type: application/json" -d "{\"recipient\":\"$2\", \"send_amount\": $3, \"fee\": $4}" localhost:8080/tx
     ;;
 addpeer)
-    curl -X POST -H "Content-Type: application/json" -d "{\"ip\":\"$2\"}" localhost:8080/peer
+    curl -X POST -H "Content-Type: application/json" -d "{\"addr\":\"$2\"}" localhost:8080/peer
     ;;
 *)
     echo "No matching argument found: $1"
