@@ -100,7 +100,7 @@ pub fn is_valid_new_block(
         is_valid_beacon(&beacon, &block.beacon)
     };
     block.index == previous_block.index + 1
-        && block.timestamp > previous_block.timestamp
+        && block.timestamp >= previous_block.timestamp
         && block.previous_hash == previous_block.hash
         && block.calculate_hash() == block.hash
         && block.is_valid(unspent_transactions)
