@@ -20,7 +20,7 @@ pub struct Args {
     pub api_port: u16,
 
     /// The port to listen on for the P2P network
-    #[arg(short, long, default_value = "62697")]
+    #[arg(long, default_value = "62697")]
     pub p2p_port: u16,
 
     /// The timeout for API requests in seconds
