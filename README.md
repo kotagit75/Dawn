@@ -95,7 +95,7 @@ This project should currently be considered experimental and not production-read
 ```bash
 git clone https://github.com/kotagit75/btfy.git
 cd btfy
-cargo run -- --mining --beacon-cmd example/open-meteo.sh
+cargo run -- --mining --beacon-cmd example/dummy.sh --vdf-difficulty 100
 ```
 
 [Detailed Installation Instructions](docs/installation.md)
@@ -105,17 +105,14 @@ cargo run -- --mining --beacon-cmd example/open-meteo.sh
 git clone https://github.com/kotagit75/btfy.git
 cd btfy
 docker build ./ -t btfy
-docker run --network=host -t btfy:latest --mining
+docker run --network=host -t btfy:latest --mining --vdf-difficulty 100
 ```
 
 ### Usage
 ```bash
-# run
-cargo run
-
 # run and mine blocks with beacon provider
-cargo run -- --mining --beacon-cmd example/dummy.sh
-cargo run -- --mining --beacon-cmd example/open-meteo.sh
+cargo run -- --mining --beacon-cmd example/dummy.sh --vdf-difficulty 100
+cargo run -- --mining --beacon-cmd example/open-meteo.sh --vdf-difficulty 100
 
 # display help
 cargo run -- --help
