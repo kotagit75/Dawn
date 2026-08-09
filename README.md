@@ -5,6 +5,7 @@
   ![Rust](https://shields.io/badge/-Rust-3776AB?style=for-the-badge&logo=rust)
   [![Discord](https://img.shields.io/badge/Join%20us%20on-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/SP9N9PD3Sy)
   [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+  <br>
   ![GitHub Actions Results](https://github.com/kotagit75/btfy/actions/workflows/test.yaml/badge.svg)
   ![GitHub Actions Results](https://github.com/kotagit75/btfy/actions/workflows/p2p-test.yaml/badge.svg)
   ![GitHub Actions Results](https://github.com/kotagit75/btfy/actions/workflows/lint.yaml/badge.svg)
