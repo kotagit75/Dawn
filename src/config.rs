@@ -4,7 +4,7 @@ use clap::Parser;
 
 pub const VDF_DIFFICULTY: u64 = 5295676;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Whether to mine blocks
@@ -30,6 +30,10 @@ pub struct Args {
     /// Beacon provider command to run over stdio
     #[arg(long = "beacon-cmd", num_args = 1.., value_name = "CMD")]
     pub beacon_cmd: Vec<String>,
+
+    /// For testing only: vdf difficulty
+    #[arg(long)]
+    pub vdf_difficulty: Option<u64>,
 }
 #[derive(Debug, Clone)]
 pub struct InternalConfig {
@@ -44,9 +48,9 @@ pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     let args = Args::parse();
 
     Config {
-        args,
+        args: args.clone(),
         internal_config: InternalConfig {
-            vdf_difficulty: VDF_DIFFICULTY,
+            vdf_difficulty: args.vdf_difficulty.unwrap_or(VDF_DIFFICULTY),
         },
     }
 });
