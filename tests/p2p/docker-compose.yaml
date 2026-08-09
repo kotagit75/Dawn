@@ -18,6 +18,7 @@ services:
       --api-port 8080
       --p2p-port 62697
       --beacon-cmd temperature.sh
+      --vdf-difficulty 10000
       --mining
     ports:
       - "8080:8080"
@@ -36,6 +37,7 @@ services:
       --api-port 8080
       --p2p-port 62698
       --beacon-cmd temperature.sh
+      --vdf-difficulty 10000
     ports:
       - "8081:8080"
       - "62698:62698"

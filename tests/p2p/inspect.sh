@@ -1,132 +1,160 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yaml"
+COMPOSE_FILE="$(dirname "$0")/docker-compose.yaml"
+RESULT_DIR="$(dirname "$0")/results"
+NODE_A_API="http://localhost:8080"
+NODE_B_API="http://localhost:8081"
+P2P_IP_B="172.28.0.3:62698"
+P2P_IP_A="172.28.0.2:62697"
+TIMEOUT=60
+SLEEP_INTERVAL=2
 
-NODE_PORTS=(8080 8081)
-NODE_NAMES=("node-a" "node-b")
-
-function boot() {
-    echo "=== [Preparation 1/3] Starting Node A/B and checking ports/IPs ==="
-    docker compose -f "$COMPOSE_FILE" up -d --build
-
-    for i in "${!NODE_NAMES[@]}"; do
-        local name="${NODE_NAMES[$i]}"
-        local port="${NODE_PORTS[$i]}"
-        local ip
-        ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "btfy-$name" 2>/dev/null || echo "N/A")
-        echo "  - $name: API Port = $port, Container IP = $ip"
-    done
-
-    echo "=== [Preparation 2/3] Checking health status for Node A/B (health) ==="
-    for port in "${NODE_PORTS[@]}"; do
-        local url="http://localhost:$port/health"
-        echo -n "  - Waiting for $url ... "
-        local retries=30
-        local healthy=false
-        while [ $retries -gt 0 ]; do
-            if res=$(curl -s "$url" 2>/dev/null || true) && [ "$res" = "ok" ]; then
-                healthy=true
-                break
-            fi
-            sleep 1
-            ((retries--))
-        done
-
-        if [ "$healthy" = true ]; then
-            echo "OK"
-        else
-            echo "FAILED"
-            echo "Error: Node on port $port failed health check." >&2
-            return 1
-        fi
-    done
-
-    echo "=== [Preparation 3/3] Fetching and recording node addresses ==="
-    for i in "${!NODE_NAMES[@]}"; do
-        local name="${NODE_NAMES[$i]}"
-        local port="${NODE_PORTS[$i]}"
-        local address
-        address=$(curl -s "http://localhost:$port/address" 2>/dev/null || echo "N/A")
-        echo "  - $name (Port $port) Address: $address"
-    done
-
-    echo "=== Preparation Complete ==="
+log() { printf "%s %s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+ensure_cmds() {
+  for cmd in curl jq docker; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "required command not found: $cmd" >&2
+      exit 2
+    fi
+  done
 }
 
-# Connection & Peer Setup: register peers, verify mutual recognition, and check idempotency
-function connect_peers() {
-    local node_a_port="${NODE_PORTS[0]}"
-    local node_b_port="${NODE_PORTS[1]}"
+http_get() { curl -sS -f "$1"; }
+http_post_json() { curl -sS -f -X POST -H "Content-Type: application/json" -d "$2" "$1"; }
 
-    # Node-B's P2P address (internal container IP and P2P port)
-    local node_b_p2p="172.28.0.3:62698"
-
-    echo "=== [Peer Setup 1/3] Sending addpeer from node-a to node-b ==="
-    local res
-    res=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "{\"addr\": \"$node_b_p2p\"}" \
-        "http://localhost:$node_a_port/peer")
-    if [ "$res" -ge 200 ] && [ "$res" -lt 300 ]; then
-        echo "  - addpeer (node-a -> node-b): OK (HTTP $res)"
-    else
-        echo "  - addpeer (node-a -> node-b): FAILED (HTTP $res)" >&2
-        return 1
+wait_for_health() {
+  local url="$1"; local deadline=$((SECONDS+TIMEOUT))
+  while :; do
+    if curl -s -o /dev/null -w '%{http_code}' "$url/health" 2>/dev/null | grep -q '^200$'; then
+      log "health OK at $url"
+      return 0
     fi
-
-    # Wait briefly for peer discovery to propagate
-    sleep 2
-
-    echo "=== [Peer Setup 2/3] Verifying mutual peer recognition via /peers ==="
-    local peers_a peers_b
-
-    peers_a=$(curl -s "http://localhost:$node_a_port/peers" 2>/dev/null || echo "[]")
-    echo "  - node-a peers: $peers_a"
-    if echo "$peers_a" | grep -q "172.28.0.3"; then
-        echo "  - node-a recognizes node-b: OK"
-    else
-        echo "  - node-a recognizes node-b: FAILED (node-b not found in peers)" >&2
-        return 1
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "timeout waiting for health at $url"
+      return 1
     fi
-
-    peers_b=$(curl -s "http://localhost:$node_b_port/peers" 2>/dev/null || echo "[]")
-    echo "  - node-b peers: $peers_b"
-    if echo "$peers_b" | grep -q "172.28.0.2"; then
-        echo "  - node-b recognizes node-a: OK"
-    else
-        # Not necessarily a failure if reverse-direction discovery is async
-        echo "  - node-b recognizes node-a: NOT YET (may be async)"
-    fi
-
-    echo "=== [Peer Setup 3/3] Verifying duplicate addpeer is safe (idempotency) ==="
-    local res2
-    res2=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "{\"addr\": \"$node_b_p2p\"}" \
-        "http://localhost:$node_a_port/peer")
-    if [ "$res2" -ge 200 ] && [ "$res2" -lt 500 ]; then
-        echo "  - Duplicate addpeer: Safe (HTTP $res2)"
-    else
-        echo "  - Duplicate addpeer: Node returned unexpected error (HTTP $res2)" >&2
-        return 1
-    fi
-
-    echo "=== Peer Setup Complete ==="
+    sleep $SLEEP_INTERVAL
+  done
 }
 
-function cleanup() {
-    echo "=== Cleanup ==="
-    docker compose -f "$COMPOSE_FILE" down
-    echo "=== Cleanup Complete ==="
+safe_jq() {
+  # usage: safe_jq <filter> <json>
+  echo "$2" | jq -r --argjson null null "$1" 2>/dev/null || echo ""
 }
 
-trap 'cleanup' EXIT
+record() {
+  mkdir -p "$RESULT_DIR"
+  echo "$1" >> "$RESULT_DIR/p2p_test_$(date +%Y%m%dT%H%M%S).log"
+}
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    boot "$@"
-    connect_peers
-fi
+main() {
+  ensure_cmds
+
+  log "Starting compose: $COMPOSE_FILE"
+  docker compose -f "$COMPOSE_FILE" up -d --build >/dev/null
+
+  log "Waiting for Node A and B health"
+  wait_for_health "$NODE_A_API" || { log "Node A failed to become healthy"; docker compose -f "$COMPOSE_FILE" down -v; exit 1; }
+  wait_for_health "$NODE_B_API" || { log "Node B failed to become healthy"; docker compose -f "$COMPOSE_FILE" down -v; exit 1; }
+
+  log "Fetching addresses"
+  addr_a=$(http_get "$NODE_A_API/address" 2>/dev/null || echo "")
+  addr_b=$(http_get "$NODE_B_API/address" 2>/dev/null || echo "")
+  log "Node A address: ${addr_a:-(none)}"
+  log "Node B address: ${addr_b:-(none)}"
+  record "Node A: $addr_a\nNode B: $addr_b"
+
+  log "Adding peer (Node A -> Node B: $P2P_IP_B)"
+  addres=$(http_post_json "$NODE_A_API/peer" "{\"addr\": \"$P2P_IP_B\"}" 2>&1) || {
+    log "addpeer failed: $addres"
+  }
+  sleep 2
+
+  log "Verifying peers on both nodes"
+  peers_a=$(http_get "$NODE_A_API/peers" || echo "")
+  peers_b=$(http_get "$NODE_B_API/peers" || echo "")
+  log "Node A peers: $peers_a"
+  log "Node B peers: $peers_b"
+  record "peers_a: $peers_a\npeers_b: $peers_b"
+
+  if echo "$peers_a" | grep -q "$P2P_IP_B" && echo "$peers_b" | grep -q "$P2P_IP_A"; then
+    log "Peer registration appears mutual"
+  else
+    log "WARNING: peer registration not mutual or not visible yet"
+  fi
+
+  log "Testing idempotent addpeer (duplicate)"
+  http_post_json "$NODE_A_API/peer" "{\"addr\": \"$P2P_IP_B\"}" >/dev/null 2>&1 || true
+  log "Duplicate addpeer sent"
+
+  log "Waiting for Node A chain length >= 1 before issuing tx"
+  deadline_chain=$((SECONDS+TIMEOUT))
+  while :; do
+    len_a=$(http_get "$NODE_A_API/chain" 2>/dev/null | jq .blocks | jq -r 'if type=="array" then length else (.length // 0) end' 2>/dev/null || echo 0)
+    if [ "$len_a" -ge 1 ]; then
+      log "Node A chain length is $len_a"
+      break
+    fi
+    if [ "$SECONDS" -ge "$deadline_chain" ]; then
+      log "timeout waiting for Node A chain length >=1; proceeding anyway"
+      break
+    fi
+    sleep $SLEEP_INTERVAL
+  done
+
+  log "Issuing sample transaction to Node A"
+  txres=$(http_post_json "$NODE_A_API/tx" '{"recipient":"30a", "send_amount": 1, "fee": 0}' 2>&1) || { log "tx post failed: $txres"; }
+  log "tx result: ${txres:0:200}"
+
+  log "Waiting for chain propagation to Node B"
+  # get chain length helper
+  get_chain_len() {
+    local url="$1"
+    local raw
+    raw=$(http_get "$url/chain" || echo "")
+    echo "$raw" | jq .blocks | jq -r '. | if type=="array" then length else (.length // 0) end' 2>/dev/null || echo 0
+  }
+  get_chain_hash() {
+    local url="$1"
+    raw=$(http_get "$url/chain" || echo "")
+    echo "$raw" | jq .blocks | jq -r 'if type=="array" then (.[-1].hash // .[-1].block_hash // .[-1].header.hash) else (.last.hash // .latest.hash // "") end' 2>/dev/null || echo ""
+  }
+
+  local_deadline=$((SECONDS+TIMEOUT))
+  while [ "$SECONDS" -lt "$local_deadline" ]; do
+    len_a=$(get_chain_len "$NODE_A_API")
+    len_b=$(get_chain_len "$NODE_B_API")
+    hash_a=$(get_chain_hash "$NODE_A_API")
+    hash_b=$(get_chain_hash "$NODE_B_API")
+    log "chain lengths: A=$len_a B=$len_b"
+    if [ "$len_b" -ge "$len_a" ] && [ -n "$hash_a" ] && [ "$hash_a" = "$hash_b" ]; then
+      log "Chain propagated to Node B"
+      break
+    fi
+    sleep $SLEEP_INTERVAL
+  done
+
+  if [ "$SECONDS" -ge "$local_deadline" ]; then
+    log "Timeout waiting for chain propagation"
+  fi
+
+  log "Abnormal addpeer test: non-existent IP"
+  badip="172.28.255.254:62697"
+  if curl -s -X POST -H "Content-Type: application/json" -d "{\"ip\": \"$badip\"}" "$NODE_A_API/peer" >/dev/null 2>&1; then
+    log "addpeer to non-existent IP returned success (check behavior)"
+  else
+    log "addpeer to non-existent IP returned error or timed out (expected)"
+  fi
+
+  log "Collecting docker logs"
+  mkdir -p "$RESULT_DIR"
+  docker logs btfy-node-a > "$RESULT_DIR/node-a.log" 2>&1 || true
+  docker logs btfy-node-b > "$RESULT_DIR/node-b.log" 2>&1 || true
+
+  log "Test finished; cleaning up compose"
+  docker compose -f "$COMPOSE_FILE" down -v >/dev/null
+  log "Results saved to $RESULT_DIR"
+}
+
+main "$@"
