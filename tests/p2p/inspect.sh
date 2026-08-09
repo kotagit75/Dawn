@@ -48,6 +48,20 @@ record() {
   echo "$1" >> "$RESULT_DIR/p2p_test_$(date +%Y%m%dT%H%M%S).log"
 }
 
+cleanup() {
+  log "Cleaning up docker compose"
+  docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
+}
+
+fail() {
+  log "ERROR: $*"
+  cleanup
+  exit 1
+}
+
+# ensure cleanup runs on exit as a safety net
+trap cleanup EXIT
+
 main() {
   ensure_cmds
 
@@ -66,9 +80,9 @@ main() {
   record "Node A: $addr_a\nNode B: $addr_b"
 
   log "Adding peer (Node A -> Node B: $P2P_IP_B)"
-  addres=$(http_post_json "$NODE_A_API/peer" "{\"addr\": \"$P2P_IP_B\"}" 2>&1) || {
-    log "addpeer failed: $addres"
-  }
+  if ! addres=$(http_post_json "$NODE_A_API/peer" "{\"addr\": \"$P2P_IP_B\"}" 2>&1); then
+    fail "addpeer failed: $addres"
+  fi
   sleep 2
 
   log "Verifying peers on both nodes"
@@ -97,14 +111,15 @@ main() {
       break
     fi
     if [ "$SECONDS" -ge "$deadline_chain" ]; then
-      log "timeout waiting for Node A chain length >=1; proceeding anyway"
-      break
+      fail "timeout waiting for Node A chain length >=1"
     fi
     sleep $SLEEP_INTERVAL
   done
 
   log "Issuing sample transaction to Node A"
-  txres=$(http_post_json "$NODE_A_API/tx" '{"recipient":"30a", "send_amount": 1, "fee": 0}' 2>&1) || { log "tx post failed: $txres"; }
+  if ! txres=$(http_post_json "$NODE_A_API/tx" '{"recipient":"30a", "send_amount": 1, "fee": 0}' 2>&1); then
+    fail "tx post failed: $txres"
+  fi
   log "tx result: ${txres:0:200}"
 
   log "Waiting for chain propagation to Node B"
@@ -136,7 +151,7 @@ main() {
   done
 
   if [ "$SECONDS" -ge "$local_deadline" ]; then
-    log "Timeout waiting for chain propagation"
+    fail "Timeout waiting for chain propagation"
   fi
 
   log "Abnormal addpeer test: non-existent IP"
