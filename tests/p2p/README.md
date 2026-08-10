@@ -9,3 +9,6 @@ This directory contains automated P2P inspection scripts. inspect.sh performs th
 - Issues a sample transaction to node A and verifies its propagation to node B (/chain)
 - Executes an error-case addpeer against a non-existent IP to check error handling
 - Collects node logs and saves the test results under results/
+
+> [!CAUTION]
+> Chain sync tests occasionally fail.
