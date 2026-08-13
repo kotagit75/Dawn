@@ -32,7 +32,7 @@ pub enum Command {
     ApiRequest(Event, oneshot::Sender<UpdateResult>),
 }
 
-pub async fn update(event: Event, state: State, beacon_cache: &dyn BeaconCache) -> (State, Effect) {
+pub async fn update(event: Event, state: &mut State, beacon_cache: &dyn BeaconCache) -> Effect {
     match event {
         Event::AddPeer(peer) => handle_add_peer(state, peer),
         Event::RemovePeers(peers) => handle_remove_peers(state, peers),
@@ -60,7 +60,7 @@ mod tests {
             transaction::Transaction,
         },
         p2p::{P2PMessage, Peer},
-        state::{State, add_peers},
+        state::State,
         util::{
             key::{SK, generate_sk},
             signature::SignatureWrapper,
@@ -112,9 +112,9 @@ mod tests {
             .unwrap()
     }
 
-    async fn run_update(event: Event, state: State) -> (State, Effect) {
+    async fn run_update(event: Event, mut state: State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        update(event, state, &cache).await
+        update(event, &mut state, &cache).await
     }
 
     #[tokio::test]
@@ -122,7 +122,7 @@ mod tests {
         let state = funded_state();
         let peer = Peer::new("127.0.0.1:8080");
 
-        let (next, effect) = run_update(Event::AddPeer(peer.clone()), state).await;
+        let effect = run_update(Event::AddPeer(peer.clone()), state).await;
 
         assert!(next.peers.contains(&peer));
         assert_eq!(effect, Effect::Broadcast(P2PMessage::QueryPeers));

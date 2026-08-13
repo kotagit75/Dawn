@@ -1,19 +1,19 @@
 use crate::{
     blockchain::{address::Address, validation::is_valid_address},
     p2p::P2PMessage,
-    state::{State, add_transaction_to_pool},
+    state::State,
     update::effect::{Effect, when_changed},
 };
 
 pub fn handle_add_transaction(
-    state: State,
+    state: &mut State,
     recipient: &Address,
     send_amount: u64,
     fee: u64,
-) -> (State, Effect) {
+) -> Effect {
     if !is_valid_address(recipient) {
         info!("invalid recipient address: {}", recipient.der);
-        return (state, Effect::None);
+        return Effect::None;
     }
     if let Some(transaction) = state.chain.generate_transaction(
         &state.address,
@@ -23,20 +23,17 @@ pub fn handle_add_transaction(
         &state.transactions,
         fee,
     ) {
-        let (state, changed) = add_transaction_to_pool(state, &transaction);
+        let changed = state.add_transaction_to_pool(&transaction);
         if changed {
             info!("added transaction: {:?}", transaction);
         } else {
             error!("failed to add transaction: {:?}", transaction);
         }
-        (
-            state,
-            when_changed(
-                Effect::Broadcast(P2PMessage::ResponseTransactions(vec![transaction])),
-                changed,
-            ),
+        when_changed(
+            Effect::Broadcast(P2PMessage::ResponseTransactions(vec![transaction])),
+            changed,
         )
     } else {
-        (state, Effect::None)
+        Effect::None
     }
 }

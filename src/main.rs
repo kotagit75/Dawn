@@ -57,21 +57,21 @@ async fn main() {
             Command::ApiRequest(event, response_tx) => (event, Some(response_tx)),
         };
         let previous_state = state.clone();
-        let (new_state, effect) = update(event, state, beacon_cache.as_ref()).await;
-        state = new_state.clone();
+        let effect = update(event, &mut state, beacon_cache.as_ref()).await;
         if state.chain != previous_state.chain {
             let _ = save_chain(&state.chain).inspect_err(|e| error!("failed to save chain: {}", e));
         }
         let _ = state_tx.send(state.clone());
         if let Some(response_tx) = response_tx {
             let _ = response_tx.send(UpdateResult {
-                changed: new_state != previous_state,
+                changed: state != previous_state,
                 effect: effect.clone(),
             });
         }
         let event_tx_clone = event_tx.clone();
+        let state_clone = state.clone();
         tokio::spawn(async move {
-            let events = run_effect(new_state, effect).await;
+            let events = run_effect(state_clone, effect).await;
             for event in events {
                 let _ = event_tx_clone.send(Command::Event(event)).await;
             }
