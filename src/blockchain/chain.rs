@@ -106,23 +106,24 @@ mod tests {
 
     #[test]
     fn add_block_rejects_invalid_block() {
-        let c = Chain::new();
+        let mut c = Chain::new();
         let bad = dummy_block(&c.get_latest_block(), vec![], 1);
         let cache = InMemoryBeaconCache::new();
-        let (next, changed) = c.add_block(bad, Some(&cache));
+        let changed = c.add_block(bad, Some(&cache));
         assert!(!changed);
-        assert_eq!(next, c);
+        assert_eq!(c, Chain::new());
     }
 
     #[test]
     fn replace_rejects_invalid_longer_chain() {
-        let base = Chain::new();
+        let mut base = Chain::new();
         let g = genesis_block();
         let longer_but_invalid = Chain {
             blocks: vec![g.clone(), dummy_block(&g, vec![], 1)],
         };
         let cache = InMemoryBeaconCache::new();
-        assert_eq!(base.replace(longer_but_invalid, &cache), base);
+        base.replace(longer_but_invalid, &cache);
+        assert_eq!(base, Chain::new());
     }
 
     #[test]

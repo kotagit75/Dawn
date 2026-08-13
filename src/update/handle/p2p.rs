@@ -97,10 +97,11 @@ fn handle_response_transactions(state: &mut State, transactions: Vec<Transaction
 }
 
 fn handle_query_peers(state: &mut State, peer_option: Option<Peer>) -> Effect {
+    let known_peers = state.peers.clone();
     if let Some(peer) = peer_option {
         state.add_peers(&[peer]);
     }
-    Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone()))
+    Effect::Broadcast(P2PMessage::ResponsePeers(known_peers))
 }
 
 fn handle_response_peers(state: &mut State, peers: Vec<Peer>) -> Effect {

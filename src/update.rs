@@ -112,19 +112,24 @@ mod tests {
             .unwrap()
     }
 
-    async fn run_update(event: Event, mut state: State) -> Effect {
+    fn add_peers(mut state: State, new_peers: &[Peer]) -> (State, bool) {
+        let changed = state.add_peers(new_peers);
+        (state, changed)
+    }
+
+    async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        update(event, &mut state, &cache).await
+        update(event, state, &cache).await
     }
 
     #[tokio::test]
     async fn add_peer_broadcasts_query_peers_on_change() {
-        let state = funded_state();
+        let mut state = funded_state();
         let peer = Peer::new("127.0.0.1:8080");
 
-        let effect = run_update(Event::AddPeer(peer.clone()), state).await;
+        let effect = run_update(Event::AddPeer(peer.clone()), &mut state).await;
 
-        assert!(next.peers.contains(&peer));
+        assert!(state.peers.contains(&peer));
         assert_eq!(effect, Effect::Broadcast(P2PMessage::QueryPeers));
     }
 
@@ -133,10 +138,11 @@ mod tests {
         let mut state = funded_state();
         let peer = Peer::new("127.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&peer)).0;
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(Event::AddPeer(peer.clone()), state.clone()).await;
+        let effect = run_update(Event::AddPeer(peer.clone()), &mut state).await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(effect, Effect::None);
     }
 
@@ -148,61 +154,62 @@ mod tests {
         state = add_peers(state, std::slice::from_ref(&p1)).0;
         state = add_peers(state, std::slice::from_ref(&p2)).0;
 
-        let (next, effect) = run_update(Event::RemovePeers(vec![p1.clone()]), state).await;
+        let effect = run_update(Event::RemovePeers(vec![p1.clone()]), &mut state).await;
 
-        assert!(!next.peers.contains(&p1));
-        assert!(next.peers.contains(&p2));
+        assert!(!state.peers.contains(&p1));
+        assert!(state.peers.contains(&p2));
         assert_eq!(effect, Effect::None);
     }
 
     #[tokio::test]
     async fn add_transaction_rejects_invalid_recipient() {
-        let state = funded_state();
+        let mut state = funded_state();
         let invalid = Address {
             der: "this-is-not-hex".to_string(),
         };
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(Event::AddTransaction(invalid, 10, 0), state.clone()).await;
+        let effect = run_update(Event::AddTransaction(invalid, 10, 0), &mut state).await;
 
         assert_eq!(effect, Effect::None);
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
     }
 
     #[tokio::test]
     async fn add_transaction_accepts_and_broadcasts_when_valid() {
-        let state = funded_state();
+        let mut state = funded_state();
         let (recipient, _) = keypair();
 
-        let (next, effect) = run_update(Event::AddTransaction(recipient, 10, 0), state).await;
+        let effect = run_update(Event::AddTransaction(recipient, 10, 0), &mut state).await;
 
-        assert_eq!(next.transactions.len(), 1);
+        assert_eq!(state.transactions.len(), 1);
         assert_eq!(
             effect,
-            Effect::Broadcast(P2PMessage::ResponseTransactions(next.transactions.clone()))
+            Effect::Broadcast(P2PMessage::ResponseTransactions(state.transactions.clone()))
         );
     }
 
     #[tokio::test]
     async fn add_transaction_with_fee_is_rejected_when_not_enough_for_fee() {
-        let state = funded_state();
+        let mut state = funded_state();
         let (recipient, _) = keypair();
+        let previous_state = state.clone();
 
-        let (next, effect) =
-            run_update(Event::AddTransaction(recipient, 50, 1), state.clone()).await;
+        let effect = run_update(Event::AddTransaction(recipient, 50, 1), &mut state).await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(effect, Effect::None);
     }
 
     #[tokio::test]
     async fn add_transaction_with_fee_is_broadcast_when_sufficient() {
-        let state = funded_state();
+        let mut state = funded_state();
         let (recipient, _) = keypair();
 
-        let (next, effect) = run_update(Event::AddTransaction(recipient, 48, 2), state).await;
+        let effect = run_update(Event::AddTransaction(recipient, 48, 2), &mut state).await;
 
-        assert_eq!(next.transactions.len(), 1);
-        assert_eq!(next.transactions[0].fee, 2);
+        assert_eq!(state.transactions.len(), 1);
+        assert_eq!(state.transactions[0].fee, 2);
         match effect {
             Effect::Broadcast(P2PMessage::ResponseTransactions(txs)) => {
                 assert_eq!(txs.len(), 1);
@@ -231,9 +238,9 @@ mod tests {
         };
         state.transactions = vec![tx1, tx2];
 
-        let (next, effect) = run_update(Event::MineBlock, state).await;
+        let effect = run_update(Event::MineBlock, &mut state).await;
 
-        assert!(next.transactions.is_empty());
+        assert!(state.transactions.is_empty());
         match effect {
             Effect::MineBlock(mined) => {
                 assert_eq!(mined.len(), 2);
@@ -259,7 +266,7 @@ mod tests {
             .collect();
         state.transactions = txs;
 
-        let (_, effect) = run_update(Event::MineBlock, state).await;
+        let effect = run_update(Event::MineBlock, &mut state).await;
 
         match effect {
             Effect::MineBlock(mined) => {
@@ -283,14 +290,15 @@ mod tests {
         let tx = build_tx(&state, &recipient, 10, 0);
         state.transactions.push(tx.clone());
         let expected = state.transactions.clone();
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::QueryTransactions),
-            state.clone(),
+            &mut state,
         )
         .await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(
             effect,
             Effect::Broadcast(P2PMessage::ResponseTransactions(expected))
@@ -299,17 +307,17 @@ mod tests {
 
     #[tokio::test]
     async fn response_transactions_adds_new_and_rebroadcasts() {
-        let state = funded_state();
+        let mut state = funded_state();
         let (recipient, _) = keypair();
         let tx = build_tx(&state, &recipient, 10, 0);
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::ResponseTransactions(vec![tx.clone()])),
-            state,
+            &mut state,
         )
         .await;
 
-        assert_eq!(next.transactions, vec![tx.clone()]);
+        assert_eq!(state.transactions, vec![tx.clone()]);
         assert_eq!(
             effect,
             Effect::Broadcast(P2PMessage::ResponseTransactions(vec![tx]))
@@ -322,14 +330,15 @@ mod tests {
         let (recipient, _) = keypair();
         let tx = build_tx(&state, &recipient, 10, 0);
         state.transactions.push(tx.clone());
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::ResponseTransactions(vec![tx])),
-            state.clone(),
+            &mut state,
         )
         .await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(effect, Effect::None);
     }
 
@@ -340,15 +349,15 @@ mod tests {
         state = add_peers(state, std::slice::from_ref(&existing)).0;
         let sender = Peer::new("10.0.0.2:8080");
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(Some(sender.clone()), P2PMessage::QueryPeers),
-            state.clone(),
+            &mut state,
         )
         .await;
 
-        assert!(next.peers.contains(&existing));
-        assert!(next.peers.contains(&sender));
-        assert_eq!(next.peers.len(), 2);
+        assert!(state.peers.contains(&existing));
+        assert!(state.peers.contains(&sender));
+        assert_eq!(state.peers.len(), 2);
         assert_eq!(
             effect,
             Effect::Broadcast(P2PMessage::ResponsePeers(vec![existing]))
@@ -360,14 +369,15 @@ mod tests {
         let mut state = funded_state();
         let existing = Peer::new("10.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::QueryPeers),
-            state.clone(),
+            &mut state,
         )
         .await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(
             effect,
             Effect::Broadcast(P2PMessage::ResponsePeers(vec![existing]))
@@ -381,17 +391,17 @@ mod tests {
         let new_peer = Peer::new("10.0.0.2:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::ResponsePeers(vec![new_peer.clone()])),
-            state,
+            &mut state,
         )
         .await;
 
-        assert!(next.peers.contains(&existing));
-        assert!(next.peers.contains(&new_peer));
+        assert!(state.peers.contains(&existing));
+        assert!(state.peers.contains(&new_peer));
         assert_eq!(
             effect,
-            Effect::Broadcast(P2PMessage::ResponsePeers(next.peers.clone()))
+            Effect::Broadcast(P2PMessage::ResponsePeers(state.peers.clone()))
         );
     }
 
@@ -400,14 +410,15 @@ mod tests {
         let mut state = funded_state();
         let existing = Peer::new("10.0.0.1:8080");
         state = add_peers(state, std::slice::from_ref(&existing)).0;
+        let previous_state = state.clone();
 
-        let (next, effect) = run_update(
+        let effect = run_update(
             Event::P2PMessage(None, P2PMessage::ResponsePeers(vec![existing.clone()])),
-            state.clone(),
+            &mut state,
         )
         .await;
 
-        assert_eq!(next, state);
+        assert_eq!(state, previous_state);
         assert_eq!(effect, Effect::None);
     }
 }
