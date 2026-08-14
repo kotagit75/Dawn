@@ -371,11 +371,7 @@ mod tests {
         state = add_peers(state, std::slice::from_ref(&existing)).0;
         let previous_state = state.clone();
 
-        let effect = run_update(
-            Event::P2PMessage(None, P2PMessage::QueryPeers),
-            &mut state,
-        )
-        .await;
+        let effect = run_update(Event::P2PMessage(None, P2PMessage::QueryPeers), &mut state).await;
 
         assert_eq!(state, previous_state);
         assert_eq!(
