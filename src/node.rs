@@ -7,7 +7,7 @@ use crate::{
     beacon::BeaconCache,
     chain_repository::ChainRepository,
     config::Config,
-    event::{Event, command::Command},
+    event::{Event, command::Command, effect::Effect},
     key_repository::KeyRepository,
     p2p::{self, Peer},
     state::State,
@@ -114,15 +114,19 @@ impl Node {
             if let Some(response_tx) = command.into_response_tx() {
                 let _ = response_tx.send(result.clone());
             }
-            let event_tx_clone = self.event_tx.clone();
-            let state_clone = self.state.clone();
-            let config_clone = self.config.clone();
-            tokio::spawn(async move {
-                let events = result.effect.run(state_clone, config_clone).await;
-                for event in events {
-                    let _ = event_tx_clone.send(Command::Event(event)).await;
-                }
-            });
+            self.spawn_effect(result.effect);
         }
+    }
+
+    fn spawn_effect(&self, effect: Effect) {
+        let event_tx_clone = self.event_tx.clone();
+        let state_clone = self.state.clone();
+        let config_clone = self.config.clone();
+        tokio::spawn(async move {
+            let events = effect.run(state_clone, config_clone).await;
+            for event in events {
+                let _ = event_tx_clone.send(Command::Event(event)).await;
+            }
+        });
     }
 }
