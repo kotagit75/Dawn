@@ -99,6 +99,8 @@ impl Node {
                     .chain_repo
                     .save(&self.state.chain)
                     .inspect_err(|e| error!("failed to save chain: {}", e));
+            }
+            if result.changed {
                 let _ = self.state_tx.send(self.state.clone());
             }
             if let Some(response_tx) = command.into_response_tx() {
