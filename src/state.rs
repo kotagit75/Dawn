@@ -63,7 +63,7 @@ impl State {
                 info!("added peer: {}", new_peer.addr);
                 added = true;
             } else {
-                error!("peer already exists: {}", new_peer.addr);
+                debug!("peer already exists: {}", new_peer.addr);
             }
         }
         added
