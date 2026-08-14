@@ -1,8 +1,8 @@
 use crate::{
     blockchain::block::{Block, MAX_TRANSACTIONS_PER_BLOCK},
+    event::effect::{Effect, when_changed},
     p2p::P2PMessage,
     state::State,
-    update::effect::{Effect, when_changed},
 };
 
 pub fn handle_mine_block(state: &mut State) -> Effect {

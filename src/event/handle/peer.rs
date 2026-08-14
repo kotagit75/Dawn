@@ -1,7 +1,7 @@
 use crate::{
+    event::effect::{Effect, when_changed},
     p2p::{P2PMessage, Peer},
     state::State,
-    update::effect::{Effect, when_changed},
 };
 
 pub fn handle_add_peer(state: &mut State, new_peer: Peer) -> Effect {

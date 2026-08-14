@@ -14,7 +14,7 @@ use tokio::{
 use crate::{
     blockchain::{block::Block, transaction::Transaction},
     config::CONFIG,
-    update::{Command, event::Event},
+    event::{Command, Event},
 };
 
 pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {

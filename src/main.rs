@@ -12,10 +12,10 @@ use crate::{
     beacon::InMemoryBeaconCache,
     chain_repository::{ChainRepository, FileChainRepository},
     config::CONFIG,
+    event::{Command, Event, UpdateResult},
     key_repository::{FileKeyRepository, KeyRepository},
     p2p::Peer,
     state::State,
-    update::{Command, UpdateResult, effect::run_effect, event::Event, update},
 };
 
 pub mod api;
@@ -23,10 +23,10 @@ pub mod beacon;
 pub mod blockchain;
 pub mod chain_repository;
 pub mod config;
+pub mod event;
 pub mod key_repository;
 pub mod p2p;
 pub mod state;
-pub mod update;
 pub mod util;
 
 #[tokio::main]
@@ -61,7 +61,7 @@ async fn main() {
         };
         let previous_state = state.clone();
 
-        let effect = update(event, &mut state, beacon_cache.as_ref()).await;
+        let effect = event.process(&mut state, beacon_cache.as_ref()).await;
         if state.chain != previous_state.chain {
             let _ = chain_repo
                 .save(&state.chain)
@@ -79,7 +79,7 @@ async fn main() {
         let event_tx_clone = event_tx.clone();
         let state_clone = state.clone();
         tokio::spawn(async move {
-            let events = run_effect(state_clone, effect).await;
+            let events = effect.run(state_clone).await;
             for event in events {
                 let _ = event_tx_clone.send(Command::Event(event)).await;
             }

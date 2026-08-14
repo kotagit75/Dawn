@@ -1,12 +1,12 @@
 use crate::{
     beacon::{BeaconCache, prefetch_beacon},
     blockchain::{block::Block, chain::Chain, transaction::Transaction},
-    p2p::{P2PMessage, Peer},
-    state::State,
-    update::{
+    event::{
         beacon::prefetch_chain_beacons,
         effect::{Effect, when_changed},
     },
+    p2p::{P2PMessage, Peer},
+    state::State,
 };
 
 pub async fn handle_p2p_message(

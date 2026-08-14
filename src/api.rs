@@ -16,9 +16,9 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
     CONFIG,
     blockchain::{address::Address, chain::Chain},
+    event::{Command, Event, UpdateResult},
     p2p::Peer,
     state::State,
-    update::{Command, UpdateResult, event::Event},
     util::key::PK,
 };
 

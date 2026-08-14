@@ -1,9 +1,8 @@
 use crate::{
     beacon::BeaconCache,
-    state::State,
-    update::{
+    blockchain::{address::Address, block::Block},
+    event::{
         effect::Effect,
-        event::Event,
         handle::{
             miner::{handle_completed_mine_block, handle_mine_block},
             p2p::handle_p2p_message,
@@ -11,13 +10,14 @@ use crate::{
             transaction::handle_add_transaction,
         },
     },
+    p2p::{P2PMessage, Peer},
+    state::State,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 pub mod beacon;
 pub mod effect;
-pub mod event;
 pub mod handle;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -32,18 +32,31 @@ pub enum Command {
     ApiRequest(Event, oneshot::Sender<UpdateResult>),
 }
 
-pub async fn update(event: Event, state: &mut State, beacon_cache: &dyn BeaconCache) -> Effect {
-    match event {
-        Event::AddPeer(peer) => handle_add_peer(state, peer),
-        Event::RemovePeers(peers) => handle_remove_peers(state, peers),
-        Event::AddTransaction(recipient, send_amount, fee) => {
-            handle_add_transaction(state, &recipient, send_amount, fee)
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Event {
+    AddPeer(Peer),
+    RemovePeers(Vec<Peer>),
+    AddTransaction(Address, u64, u64),
+    MineBlock,
+    CompletedMineBlock(Block),
+    P2PMessage(Option<Peer>, P2PMessage),
+}
+impl Event {
+    pub async fn process(self, state: &mut State, beacon_cache: &dyn BeaconCache) -> Effect {
+        match self {
+            Event::AddPeer(peer) => handle_add_peer(state, peer),
+            Event::RemovePeers(peers) => handle_remove_peers(state, peers),
+            Event::AddTransaction(recipient, send_amount, fee) => {
+                handle_add_transaction(state, &recipient, send_amount, fee)
+            }
+            Event::P2PMessage(peer_option, message) => {
+                handle_p2p_message(state, beacon_cache, peer_option, message).await
+            }
+            Event::MineBlock => handle_mine_block(state),
+            Event::CompletedMineBlock(new_block) => {
+                handle_completed_mine_block(state, new_block).await
+            }
         }
-        Event::P2PMessage(peer_option, message) => {
-            handle_p2p_message(state, beacon_cache, peer_option, message).await
-        }
-        Event::MineBlock => handle_mine_block(state),
-        Event::CompletedMineBlock(new_block) => handle_completed_mine_block(state, new_block).await,
     }
 }
 
@@ -119,7 +132,7 @@ mod tests {
 
     async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        update(event, state, &cache).await
+        event.process(state, &cache).await
     }
 
     #[tokio::test]

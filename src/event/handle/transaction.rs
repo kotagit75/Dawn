@@ -1,8 +1,8 @@
 use crate::{
     blockchain::{address::Address, validation::is_valid_address},
+    event::effect::{Effect, when_changed},
     p2p::P2PMessage,
     state::State,
-    update::effect::{Effect, when_changed},
 };
 
 pub fn handle_add_transaction(
