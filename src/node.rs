@@ -1,3 +1,4 @@
+use std::io::Error;
 use std::sync::Arc;
 
 use tokio::sync::{mpsc, watch};
@@ -23,52 +24,18 @@ pub struct Node {
     beacon_cache: Arc<dyn BeaconCache>,
 }
 
-fn init_state(chain_repo: &dyn ChainRepository, key_repo: &dyn KeyRepository) -> Option<State> {
-    debug!("loading node key");
-    let Ok(sk) = key_repo.load_or_init() else {
-        error!("failed to load node key");
-        return None;
-    };
-    debug!("loading chain");
-    let Ok(chain) = chain_repo.load_or_init() else {
-        error!("failed to load chain");
-        return None;
-    };
-    debug!("initializing state");
-    Some(State::new(sk, chain))
-}
-
-async fn init_p2p_and_api(
-    state_rx: watch::Receiver<State>,
-    event_tx: mpsc::Sender<Command>,
-    api_port: u16,
-    p2p_port: u16,
-) -> () {
-    let event_tx_clone = event_tx.clone();
-    tokio::spawn(async move {
-        api::init_api(event_tx_clone, state_rx, api_port)
-            .await
-            .expect_err("failed to init api");
-    });
-    tokio::spawn(async move {
-        p2p::init_p2p(event_tx, p2p_port)
-            .await
-            .expect_err("failed to init p2p");
-    });
-}
-
 impl Node {
     pub async fn new(
         config: Config,
         chain_repo: Box<dyn ChainRepository>,
         key_repo: Box<dyn KeyRepository>,
         beacon_cache: Arc<dyn BeaconCache>,
-    ) -> Option<Self> {
+    ) -> Result<Self, Error> {
         let state = init_state(chain_repo.as_ref(), key_repo.as_ref())?;
         let (event_tx, event_rx) = mpsc::channel(256);
         let (state_tx, state_rx) = watch::channel(state.clone());
         init_p2p_and_api(state_rx, event_tx.clone(), config.api_port, config.p2p_port).await;
-        Some(Self {
+        Ok(Self {
             state,
             config,
             chain_repo,
@@ -129,4 +96,39 @@ impl Node {
             }
         });
     }
+}
+
+fn init_state(
+    chain_repo: &dyn ChainRepository,
+    key_repo: &dyn KeyRepository,
+) -> Result<State, Error> {
+    debug!("loading node key");
+    let sk = key_repo
+        .load_or_init()
+        .inspect_err(|e| error!("failed to load node key: {}", e))?;
+    debug!("loading chain");
+    let chain = chain_repo
+        .load_or_init()
+        .inspect_err(|e| error!("failed to load chain: {}", e))?;
+    debug!("initializing state");
+    Ok(State::new(sk, chain))
+}
+
+async fn init_p2p_and_api(
+    state_rx: watch::Receiver<State>,
+    event_tx: mpsc::Sender<Command>,
+    api_port: u16,
+    p2p_port: u16,
+) -> () {
+    let event_tx_clone = event_tx.clone();
+    tokio::spawn(async move {
+        api::init_api(event_tx_clone, state_rx, api_port)
+            .await
+            .expect_err("failed to init api");
+    });
+    tokio::spawn(async move {
+        p2p::init_p2p(event_tx, p2p_port)
+            .await
+            .expect_err("failed to init p2p");
+    });
 }

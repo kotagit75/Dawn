@@ -76,7 +76,7 @@ async fn main() {
         }
     };
 
-    let Some(node) = Node::new(
+    let Ok(node) = Node::new(
         config,
         Box::new(FileChainRepository::new("chain")),
         Box::new(FileKeyRepository::new("key.der")),
@@ -84,7 +84,6 @@ async fn main() {
     )
     .await
     else {
-        error!("failed to initialize the node.");
         return;
     };
     node.run().await;
