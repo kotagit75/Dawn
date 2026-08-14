@@ -145,19 +145,12 @@ mod tests {
         (state, changed)
     }
 
-    const TEST_CONFIG: Config = Config {
-        vdf_difficulty: 10,
-        beacon_cmd: Vec::new(),
-        mining: false,
-        peer: None,
-        api_port: 8080,
-        p2p_port: 8081,
-        beacon_timeout: 10,
-    };
-
     async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        event.process(state, &cache, &TEST_CONFIG).await.effect
+        event
+            .process(state, &cache, &Config::default())
+            .await
+            .effect
     }
 
     #[tokio::test]
