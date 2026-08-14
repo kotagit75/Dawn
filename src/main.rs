@@ -10,9 +10,10 @@ use tokio::sync::{mpsc, watch};
 
 use crate::{
     beacon::InMemoryBeaconCache,
+    chain_repository::{ChainRepository, FileChainRepository},
     config::CONFIG,
     effect::run_effect,
-    node::save_chain,
+    key_repository::{FileKeyRepository, KeyRepository},
     p2p::Peer,
     state::State,
     update::{Command, UpdateResult, event::Event, update},
@@ -21,9 +22,10 @@ use crate::{
 pub mod api;
 pub mod beacon;
 pub mod blockchain;
+pub mod chain_repository;
 pub mod config;
 pub mod effect;
-pub mod node;
+pub mod key_repository;
 pub mod p2p;
 pub mod state;
 pub mod update;
@@ -33,7 +35,10 @@ pub mod util;
 async fn main() {
     logger::init_with_level(Level::Info).unwrap();
 
-    let Some(mut state) = init_state() else {
+    let chain_repo = FileChainRepository::new("chain");
+    let key_repo = FileKeyRepository::new("key.der");
+
+    let Some(mut state) = init_state(&chain_repo, &key_repo) else {
         return;
     };
 
@@ -57,17 +62,22 @@ async fn main() {
             Command::ApiRequest(event, response_tx) => (event, Some(response_tx)),
         };
         let previous_state = state.clone();
+
         let effect = update(event, &mut state, beacon_cache.as_ref()).await;
         if state.chain != previous_state.chain {
-            let _ = save_chain(&state.chain).inspect_err(|e| error!("failed to save chain: {}", e));
+            let _ = chain_repo
+                .save(&state.chain)
+                .inspect_err(|e| error!("failed to save chain: {}", e));
+            let _ = state_tx.send(state.clone());
         }
-        let _ = state_tx.send(state.clone());
+
         if let Some(response_tx) = response_tx {
             let _ = response_tx.send(UpdateResult {
                 changed: state != previous_state,
                 effect: effect.clone(),
             });
         }
+
         let event_tx_clone = event_tx.clone();
         let state_clone = state.clone();
         tokio::spawn(async move {
@@ -79,14 +89,14 @@ async fn main() {
     }
 }
 
-fn init_state() -> Option<State> {
+fn init_state(chain_repo: &dyn ChainRepository, key_repo: &dyn KeyRepository) -> Option<State> {
     debug!("loading node key");
-    let Ok(sk) = node::load_or_generate_key() else {
+    let Ok(sk) = key_repo.load_or_init() else {
         error!("failed to load node key");
         return None;
     };
     debug!("loading chain");
-    let Ok(chain) = node::load_or_generate_chain() else {
+    let Ok(chain) = chain_repo.load_or_init() else {
         error!("failed to load chain");
         return None;
     };
