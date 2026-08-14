@@ -25,6 +25,25 @@ pub mod p2p;
 pub mod state;
 pub mod util;
 
+#[tokio::main]
+async fn main() {
+    logger::init_with_level(Level::Info).unwrap();
+
+    let config = Args::parse().to_config();
+
+    let Ok(node) = Node::new(
+        config,
+        Box::new(FileChainRepository::new("chain")),
+        Box::new(FileKeyRepository::new("key.der")),
+        Arc::new(InMemoryBeaconCache::new()),
+    )
+    .await
+    else {
+        return;
+    };
+    node.run().await;
+}
+
 pub const VDF_DIFFICULTY: u64 = 5295676;
 
 #[derive(Parser, Debug, Clone)]
@@ -59,32 +78,16 @@ pub struct Args {
     pub vdf_difficulty: Option<u64>,
 }
 
-#[tokio::main]
-async fn main() {
-    logger::init_with_level(Level::Info).unwrap();
-
-    let config = {
-        let args = Args::parse();
+impl Args {
+    pub fn to_config(&self) -> Config {
         Config {
-            mining: args.mining,
-            peer: args.peer,
-            api_port: args.api_port,
-            p2p_port: args.p2p_port,
-            beacon_timeout: args.beacon_timeout,
-            beacon_cmd: args.beacon_cmd,
-            vdf_difficulty: args.vdf_difficulty.unwrap_or(VDF_DIFFICULTY),
+            mining: self.mining,
+            peer: self.peer.clone(),
+            api_port: self.api_port,
+            p2p_port: self.p2p_port,
+            beacon_timeout: self.beacon_timeout,
+            beacon_cmd: self.beacon_cmd.clone(),
+            vdf_difficulty: self.vdf_difficulty.unwrap_or(VDF_DIFFICULTY),
         }
-    };
-
-    let Ok(node) = Node::new(
-        config,
-        Box::new(FileChainRepository::new("chain")),
-        Box::new(FileKeyRepository::new("key.der")),
-        Arc::new(InMemoryBeaconCache::new()),
-    )
-    .await
-    else {
-        return;
-    };
-    node.run().await;
+    }
 }
