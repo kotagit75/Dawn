@@ -12,7 +12,7 @@ use crate::{
     beacon::InMemoryBeaconCache,
     chain_repository::{ChainRepository, FileChainRepository},
     config::CONFIG,
-    event::{Command, Event, UpdateResult},
+    event::{Event, command::Command},
     key_repository::{FileKeyRepository, KeyRepository},
     p2p::Peer,
     state::State,
@@ -55,31 +55,24 @@ async fn main() {
     }
 
     while let Some(command) = event_rx.recv().await {
-        let (event, response_tx) = match command {
-            Command::Event(event) => (event, None),
-            Command::ApiRequest(event, response_tx) => (event, Some(response_tx)),
-        };
-        let previous_state = state.clone();
+        let event = command.into_event();
 
-        let effect = event.process(&mut state, beacon_cache.as_ref()).await;
-        if state.chain != previous_state.chain {
+        let result = event.process(&mut state, beacon_cache.as_ref()).await;
+        if result.chain_changed {
             let _ = chain_repo
                 .save(&state.chain)
                 .inspect_err(|e| error!("failed to save chain: {}", e));
             let _ = state_tx.send(state.clone());
         }
 
-        if let Some(response_tx) = response_tx {
-            let _ = response_tx.send(UpdateResult {
-                changed: state != previous_state,
-                effect: effect.clone(),
-            });
+        if let Some(response_tx) = command.into_response_tx() {
+            let _ = response_tx.send(result.clone());
         }
 
         let event_tx_clone = event_tx.clone();
         let state_clone = state.clone();
         tokio::spawn(async move {
-            let events = effect.run(state_clone).await;
+            let events = result.effect.run(state_clone).await;
             for event in events {
                 let _ = event_tx_clone.send(Command::Event(event)).await;
             }

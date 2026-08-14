@@ -14,22 +14,17 @@ use crate::{
     state::State,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot;
 
 pub mod beacon;
+pub mod command;
 pub mod effect;
 pub mod handle;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UpdateResult {
     pub changed: bool,
+    pub chain_changed: bool,
     pub effect: Effect,
-}
-
-#[derive(Debug)]
-pub enum Command {
-    Event(Event),
-    ApiRequest(Event, oneshot::Sender<UpdateResult>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -42,8 +37,9 @@ pub enum Event {
     P2PMessage(Option<Peer>, P2PMessage),
 }
 impl Event {
-    pub async fn process(self, state: &mut State, beacon_cache: &dyn BeaconCache) -> Effect {
-        match self {
+    pub async fn process(self, state: &mut State, beacon_cache: &dyn BeaconCache) -> UpdateResult {
+        let previous_state = state.clone();
+        let effect = match self {
             Event::AddPeer(peer) => handle_add_peer(state, peer),
             Event::RemovePeers(peers) => handle_remove_peers(state, peers),
             Event::AddTransaction(recipient, send_amount, fee) => {
@@ -56,6 +52,11 @@ impl Event {
             Event::CompletedMineBlock(new_block) => {
                 handle_completed_mine_block(state, new_block).await
             }
+        };
+        UpdateResult {
+            changed: state != &previous_state,
+            chain_changed: state.chain != previous_state.chain,
+            effect,
         }
     }
 }
@@ -132,7 +133,7 @@ mod tests {
 
     async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        event.process(state, &cache).await
+        event.process(state, &cache).await.effect
     }
 
     #[tokio::test]
