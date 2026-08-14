@@ -58,7 +58,7 @@ impl Node {
         for peer_address in self.config.peer.iter() {
             let _ = self
                 .event_tx
-                .send(Command::Event(Event::AddPeer(Peer::new(&peer_address))))
+                .send(Command::Event(Event::AddPeer(Peer::new(peer_address))))
                 .await;
         }
     }
