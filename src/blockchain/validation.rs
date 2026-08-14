@@ -49,13 +49,17 @@ pub fn is_valid_coinbase_transaction(transaction: &Transaction, block_height: u6
 }
 
 impl Block {
-    pub fn is_valid(&self, unspent_transactions: &[UnspentTransaction]) -> bool {
+    pub fn is_valid(
+        &self,
+        unspent_transactions: &[UnspentTransaction],
+        vdf_difficulty: u64,
+    ) -> bool {
         if self.transactions.len() > MAX_TRANSACTIONS_PER_BLOCK {
             return false;
         }
         if let Some((coinbase, normal)) = self.transactions.split_first() {
             self.verify_signature()
-                && self.verify_vdf_solution()
+                && self.verify_vdf_solution(vdf_difficulty)
                 && is_valid_coinbase_transaction(coinbase, self.get_block_height())
                 && normal.iter().all(|t| t.is_valid(unspent_transactions))
         } else {
@@ -65,7 +69,7 @@ impl Block {
 }
 
 impl Chain {
-    pub fn is_valid(&self, cache: &dyn BeaconCache) -> bool {
+    pub fn is_valid(&self, cache: &dyn BeaconCache, vdf_difficulty: u64) -> bool {
         let is_valid_genesis_block = self.blocks.first().cloned() == Some(genesis_block());
         let is_valid_chain = self.blocks.windows(2).all(|windows| {
             is_valid_new_block(
@@ -74,6 +78,7 @@ impl Chain {
                 &self.get_unspent_transactions().0,
                 self.get_block_depth(&windows[1]),
                 Some(cache),
+                vdf_difficulty,
             )
         });
         is_valid_genesis_block && is_valid_chain
@@ -87,6 +92,7 @@ pub fn is_valid_new_block(
     unspent_transactions: &[UnspentTransaction],
     block_depth: usize,
     cache: Option<&dyn BeaconCache>,
+    vdf_difficulty: u64,
 ) -> bool {
     let beacon_ok = if block_depth > CHECKPOINT_DEPTH {
         true
@@ -103,6 +109,6 @@ pub fn is_valid_new_block(
         && block.timestamp >= previous_block.timestamp
         && block.previous_hash == previous_block.hash
         && block.calculate_hash() == block.hash
-        && block.is_valid(unspent_transactions)
+        && block.is_valid(unspent_transactions, vdf_difficulty)
         && beacon_ok
 }

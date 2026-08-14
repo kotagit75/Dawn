@@ -17,8 +17,14 @@ pub fn handle_mine_block(state: &mut State) -> Effect {
     Effect::MineBlock(transactions_to_mine.to_vec())
 }
 
-pub async fn handle_completed_mine_block(state: &mut State, new_block: Block) -> Effect {
-    let changed = state.chain.add_block(new_block.clone(), None);
+pub async fn handle_completed_mine_block(
+    state: &mut State,
+    new_block: Block,
+    vdf_difficulty: u64,
+) -> Effect {
+    let changed = state
+        .chain
+        .add_block(new_block.clone(), None, vdf_difficulty);
 
     if changed {
         info!("added next block to chain");

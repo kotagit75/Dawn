@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-    CONFIG,
     blockchain::{address::Address, chain::Chain},
     event::{Event, UpdateResult, command::Command},
     p2p::Peer,
@@ -57,6 +56,7 @@ async fn dispatch_event(
 pub async fn init_api(
     event_tx: mpsc::Sender<Command>,
     state_rx: watch::Receiver<State>,
+    api_port: u16,
 ) -> Result<(), Error> {
     let app = Router::new()
         .route("/health", get(handle_query_health))
@@ -68,10 +68,7 @@ pub async fn init_api(
         .route("/tx", post(handle_command_transaction))
         .route("/peer", post(handle_command_peer))
         .with_state((event_tx, state_rx));
-    let addr = SocketAddr::new(
-        std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        CONFIG.args.api_port,
-    );
+    let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), api_port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("API server is running on http://{}/", addr);
     axum::serve(listener, app).await

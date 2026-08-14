@@ -5,6 +5,7 @@ use tokio::time;
 use crate::{
     beacon::fetch_beacon,
     blockchain::{block::solve_block_vdf, transaction::Transaction},
+    config::Config,
     event::Event,
     p2p::{P2PMessage, broadcast},
     state::State,
@@ -22,14 +23,18 @@ pub fn when_changed(effect: Effect, changed: bool) -> Effect {
 }
 
 impl Effect {
-    pub async fn run(self, state: State) -> Vec<Event> {
+    pub async fn run(self, state: State, config: Config) -> Vec<Event> {
         match self {
             Effect::None => Vec::new(),
             Effect::MineBlock(transactions) => {
                 info!("generating next block");
                 let next_timestamp = Utc::now().timestamp();
-                let Some(beacon) =
-                    fetch_beacon(&state.chain.get_latest_block().hash, next_timestamp).await
+                let Some(beacon) = fetch_beacon(
+                    &config.beacon_cmd,
+                    &state.chain.get_latest_block().hash,
+                    next_timestamp,
+                )
+                .await
                 else {
                     error!("failed to fetch beacon");
                     return vec![Event::MineBlock];
@@ -44,11 +49,12 @@ impl Effect {
                 );
                 let block_data_clone = block_data.clone();
                 debug!("calculating vdf solution");
-                let vdf_solution =
-                    tokio::task::spawn_blocking(move || solve_block_vdf(&block_data_clone))
-                        .await
-                        .unwrap()
-                        .unwrap();
+                let vdf_solution = tokio::task::spawn_blocking(move || {
+                    solve_block_vdf(&block_data_clone, config.vdf_difficulty)
+                })
+                .await
+                .unwrap()
+                .unwrap();
                 debug!("calculated vdf solution");
 
                 let block =
@@ -59,7 +65,9 @@ impl Effect {
                 vec![Event::CompletedMineBlock(block), Event::MineBlock]
             }
             Effect::Broadcast(message) => {
-                vec![Event::RemovePeers(broadcast(&state.peers, &message).await)]
+                vec![Event::RemovePeers(
+                    broadcast(&state.peers, &message, config.p2p_port).await,
+                )]
             }
         }
     }

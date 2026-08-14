@@ -1,21 +1,17 @@
 use vdf_rs::{PietrzakVDF, PietrzakVDFParams, VDF, VDFParams};
 
-use crate::config::CONFIG;
-
 const VDF_BITS: u16 = 1024;
 
 fn create_vdf() -> PietrzakVDF {
     PietrzakVDFParams(VDF_BITS).new()
 }
 
-pub fn verify_solution(challenge: &[u8], solution: &[u8]) -> bool {
-    create_vdf()
-        .verify(challenge, CONFIG.internal_config.vdf_difficulty, solution)
-        .is_ok()
+pub fn verify_solution(difficulty: u64, challenge: &[u8], solution: &[u8]) -> bool {
+    create_vdf().verify(challenge, difficulty, solution).is_ok()
 }
 
-pub fn solve(challenge: &[u8]) -> Result<Vec<u8>, vdf_rs::InvalidIterations> {
-    create_vdf().solve(challenge, CONFIG.internal_config.vdf_difficulty)
+pub fn solve(challenge: &[u8], difficulty: u64) -> Result<Vec<u8>, vdf_rs::InvalidIterations> {
+    create_vdf().solve(challenge, difficulty)
 }
 
 pub fn solution_to_string(solution: &[u8]) -> String {

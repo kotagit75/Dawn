@@ -13,10 +13,7 @@ use tokio::{
     time::timeout,
 };
 
-use crate::{
-    config::CONFIG,
-    util::{hash::Hashed, progressbar::create_progress_bar},
-};
+use crate::util::{hash::Hashed, progressbar::create_progress_bar};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Encode, Decode)]
 pub struct Beacon {
@@ -127,8 +124,7 @@ struct BeaconProcess {
 }
 
 impl BeaconProcess {
-    fn spawn() -> Option<Self> {
-        let command = &CONFIG.args.beacon_cmd;
+    fn spawn(command: &[String]) -> Option<Self> {
         if command.is_empty() {
             error!("beacon command is not configured");
             return None;
@@ -169,7 +165,7 @@ impl BeaconProcess {
         icao_code: &str,
         timestamp: i64,
     ) -> Option<i32> {
-        let timeout_duration = std::time::Duration::from_secs(CONFIG.args.beacon_timeout);
+        let timeout_duration = std::time::Duration::from_secs(5);
 
         timeout(timeout_duration, async {
             self.stdin
@@ -197,10 +193,16 @@ impl BeaconProcess {
 static BEACON_PROCESS: LazyLock<AsyncMutex<Option<BeaconProcess>>> =
     LazyLock::new(|| AsyncMutex::new(None));
 
-async fn fetch_temperature(lat: f64, lon: f64, icao_code: &str, timestamp: i64) -> Option<i32> {
+async fn fetch_temperature(
+    command: &[String],
+    lat: f64,
+    lon: f64,
+    icao_code: &str,
+    timestamp: i64,
+) -> Option<i32> {
     let mut guard = BEACON_PROCESS.lock().await;
     if guard.is_none() {
-        *guard = BeaconProcess::spawn();
+        *guard = BeaconProcess::spawn(command);
     }
     let result = match guard.as_mut() {
         Some(process) => {
@@ -228,7 +230,11 @@ fn choose_locations(latest_block_hash: &Hashed) -> Vec<BeaconLocation> {
         .collect()
 }
 
-pub async fn fetch_beacon(latest_block_hash: &Hashed, timestamp: i64) -> Option<Beacon> {
+pub async fn fetch_beacon(
+    command: &[String],
+    latest_block_hash: &Hashed,
+    timestamp: i64,
+) -> Option<Beacon> {
     let locations: Vec<_> = choose_locations(latest_block_hash);
     let mut temperatures: Vec<i32> = Vec::new();
 
@@ -236,8 +242,14 @@ pub async fn fetch_beacon(latest_block_hash: &Hashed, timestamp: i64) -> Option<
     pb.set_message("fetching beacon");
 
     for (i, location) in locations.iter().enumerate() {
-        if let Some(temp) =
-            fetch_temperature(location.lat, location.lon, &location.icao_code, timestamp).await
+        if let Some(temp) = fetch_temperature(
+            command,
+            location.lat,
+            location.lon,
+            &location.icao_code,
+            timestamp,
+        )
+        .await
         {
             temperatures.push(temp);
             pb.inc(1);
@@ -256,6 +268,7 @@ pub async fn fetch_beacon(latest_block_hash: &Hashed, timestamp: i64) -> Option<
 }
 
 pub async fn prefetch_beacon(
+    command: &[String],
     cache: &dyn BeaconCache,
     latest_block_hash: &Hashed,
     timestamp: i64,
@@ -264,7 +277,7 @@ pub async fn prefetch_beacon(
     if cache.get(&key).is_some() {
         return true;
     }
-    let Some(beacon) = fetch_beacon(latest_block_hash, timestamp).await else {
+    let Some(beacon) = fetch_beacon(command, latest_block_hash, timestamp).await else {
         return false;
     };
     cache.insert(key, beacon);

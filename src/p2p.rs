@@ -13,15 +13,11 @@ use tokio::{
 
 use crate::{
     blockchain::{block::Block, transaction::Transaction},
-    config::CONFIG,
     event::{Event, command::Command},
 };
 
-pub async fn init_p2p(event_tx: mpsc::Sender<Command>) -> Result<(), Error> {
-    let addr = SocketAddr::new(
-        std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        CONFIG.args.p2p_port,
-    );
+pub async fn init_p2p(event_tx: mpsc::Sender<Command>, p2p_port: u16) -> Result<(), Error> {
+    let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), p2p_port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("P2P server is running on {}", addr);
     loop {
@@ -81,10 +77,10 @@ impl Peer {
             addr: addr.to_string(),
         }
     }
-    pub async fn write(&self, message: &P2PMessage) -> Result<(), Error> {
+    pub async fn write(&self, message: &P2PMessage, p2p_port: u16) -> Result<(), Error> {
         let payload = P2PMessagePayload {
             message: message.clone(),
-            port: CONFIG.args.p2p_port,
+            port: p2p_port,
         };
         let mut stream = tokio::net::TcpStream::connect(&self.addr).await?;
         stream
@@ -96,13 +92,13 @@ impl Peer {
     }
 }
 
-pub async fn broadcast(peers: &[Peer], message: &P2PMessage) -> Vec<Peer> {
+pub async fn broadcast(peers: &[Peer], message: &P2PMessage, p2p_port: u16) -> Vec<Peer> {
     let tasks = peers.iter().map(|peer| {
         let peer_clone = peer.clone();
         let message_clone = message.clone();
         tokio::spawn(async move {
             peer_clone
-                .write(&message_clone)
+                .write(&message_clone, p2p_port)
                 .await
                 .ok()
                 .map_or(Some(peer_clone), |_| None)

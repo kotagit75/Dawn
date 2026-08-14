@@ -6,7 +6,7 @@ use crate::{
     api,
     beacon::BeaconCache,
     chain_repository::ChainRepository,
-    config::CONFIG,
+    config::Config,
     event::{Event, command::Command},
     key_repository::KeyRepository,
     p2p::{self, Peer},
@@ -15,6 +15,7 @@ use crate::{
 
 pub struct Node {
     state: State,
+    config: Config,
     chain_repo: Box<dyn ChainRepository>,
     event_tx: mpsc::Sender<Command>,
     event_rx: mpsc::Receiver<Command>,
@@ -37,15 +38,20 @@ fn init_state(chain_repo: &dyn ChainRepository, key_repo: &dyn KeyRepository) ->
     Some(State::new(sk, chain))
 }
 
-async fn init_p2p_and_api(state_rx: watch::Receiver<State>, event_tx: mpsc::Sender<Command>) -> () {
+async fn init_p2p_and_api(
+    state_rx: watch::Receiver<State>,
+    event_tx: mpsc::Sender<Command>,
+    api_port: u16,
+    p2p_port: u16,
+) -> () {
     let event_tx_clone = event_tx.clone();
     tokio::spawn(async move {
-        api::init_api(event_tx_clone, state_rx)
+        api::init_api(event_tx_clone, state_rx, api_port)
             .await
             .expect_err("failed to init api");
     });
     tokio::spawn(async move {
-        p2p::init_p2p(event_tx)
+        p2p::init_p2p(event_tx, p2p_port)
             .await
             .expect_err("failed to init p2p");
     });
@@ -53,6 +59,7 @@ async fn init_p2p_and_api(state_rx: watch::Receiver<State>, event_tx: mpsc::Send
 
 impl Node {
     pub async fn new(
+        config: Config,
         chain_repo: Box<dyn ChainRepository>,
         key_repo: Box<dyn KeyRepository>,
         beacon_cache: Arc<dyn BeaconCache>,
@@ -60,11 +67,12 @@ impl Node {
         let state = init_state(chain_repo.as_ref(), key_repo.as_ref())?;
         let (event_tx, event_rx) = mpsc::channel(256);
         let (state_tx, state_rx) = watch::channel(state.clone());
-        init_p2p_and_api(state_rx, event_tx.clone()).await;
+        init_p2p_and_api(state_rx, event_tx.clone(), config.api_port, config.p2p_port).await;
         Some(Self {
+            state,
+            config,
             chain_repo,
             beacon_cache,
-            state,
             event_tx,
             event_rx,
             state_tx,
@@ -77,10 +85,10 @@ impl Node {
     }
 
     async fn dispatch_initial_events(&mut self) {
-        if CONFIG.args.mining {
+        if self.config.mining {
             let _ = self.event_tx.send(Command::Event(Event::MineBlock)).await;
         }
-        if let Some(address) = CONFIG.args.peer.clone() {
+        if let Some(address) = self.config.peer.clone() {
             let _ = self
                 .event_tx
                 .send(Command::Event(Event::AddPeer(Peer::new(&address))))
@@ -92,7 +100,7 @@ impl Node {
         while let Some(command) = self.event_rx.recv().await {
             let event = command.into_event();
             let result = event
-                .process(&mut self.state, self.beacon_cache.as_ref())
+                .process(&mut self.state, self.beacon_cache.as_ref(), &self.config)
                 .await;
             if result.chain_changed {
                 let _ = self
@@ -108,8 +116,9 @@ impl Node {
             }
             let event_tx_clone = self.event_tx.clone();
             let state_clone = self.state.clone();
+            let config_clone = self.config.clone();
             tokio::spawn(async move {
-                let events = result.effect.run(state_clone).await;
+                let events = result.effect.run(state_clone, config_clone).await;
                 for event in events {
                     let _ = event_tx_clone.send(Command::Event(event)).await;
                 }

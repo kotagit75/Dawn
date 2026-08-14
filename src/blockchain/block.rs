@@ -62,8 +62,9 @@ impl Block {
             &self.signature,
         )
     }
-    pub fn verify_vdf_solution(&self) -> bool {
+    pub fn verify_vdf_solution(&self, difficulty: u64) -> bool {
         verify_solution(
+            difficulty,
             block_to_buf_for_vdf(&self.to_blockdata()).as_slice(),
             &self.vdf_solution,
         )
@@ -232,8 +233,14 @@ pub fn genesis_block() -> Block {
 fn block_to_buf_for_vdf(blockdata: &BlockData) -> Vec<u8> {
     blockdata.to_string().as_bytes().to_vec()
 }
-pub fn solve_block_vdf(blockdata: &BlockDataOwned) -> Result<Vec<u8>, InvalidIterations> {
-    solve(block_to_buf_for_vdf(&blockdata.as_borrowed()).as_slice())
+pub fn solve_block_vdf(
+    blockdata: &BlockDataOwned,
+    difficulty: u64,
+) -> Result<Vec<u8>, InvalidIterations> {
+    solve(
+        block_to_buf_for_vdf(&blockdata.as_borrowed()).as_slice(),
+        difficulty,
+    )
 }
 
 #[cfg(test)]
@@ -253,6 +260,8 @@ mod tests {
         let pk = sk.to_pk();
         (pk, sk)
     }
+
+    const TEST_VDF_DIFFICULTY: u64 = 10;
 
     #[test]
     fn get_unspent_transactions_adds_fee_to_miner_utxo() {
@@ -311,6 +320,6 @@ mod tests {
             hash: [1; 32],
         };
 
-        assert!(!block.is_valid(&[]));
+        assert!(!block.is_valid(&[], TEST_VDF_DIFFICULTY));
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
     beacon::BeaconCache,
     blockchain::{address::Address, block::Block},
+    config::Config,
     event::{
         effect::Effect,
         handle::{
@@ -37,7 +38,12 @@ pub enum Event {
     P2PMessage(Option<Peer>, P2PMessage),
 }
 impl Event {
-    pub async fn process(self, state: &mut State, beacon_cache: &dyn BeaconCache) -> UpdateResult {
+    pub async fn process(
+        self,
+        state: &mut State,
+        beacon_cache: &dyn BeaconCache,
+        config: &Config,
+    ) -> UpdateResult {
         let previous_state = state.clone();
         let effect = match self {
             Event::AddPeer(peer) => handle_add_peer(state, peer),
@@ -46,11 +52,19 @@ impl Event {
                 handle_add_transaction(state, &recipient, send_amount, fee)
             }
             Event::P2PMessage(peer_option, message) => {
-                handle_p2p_message(state, beacon_cache, peer_option, message).await
+                handle_p2p_message(
+                    state,
+                    beacon_cache,
+                    peer_option,
+                    message,
+                    config.vdf_difficulty,
+                    &config.beacon_cmd,
+                )
+                .await
             }
             Event::MineBlock => handle_mine_block(state),
             Event::CompletedMineBlock(new_block) => {
-                handle_completed_mine_block(state, new_block).await
+                handle_completed_mine_block(state, new_block, config.vdf_difficulty).await
             }
         };
         UpdateResult {
@@ -131,9 +145,19 @@ mod tests {
         (state, changed)
     }
 
+    const TEST_CONFIG: Config = Config {
+        vdf_difficulty: 10,
+        beacon_cmd: Vec::new(),
+        mining: false,
+        peer: None,
+        api_port: 8080,
+        p2p_port: 8081,
+        beacon_timeout: 10,
+    };
+
     async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
-        event.process(state, &cache).await.effect
+        event.process(state, &cache, &TEST_CONFIG).await.effect
     }
 
     #[tokio::test]
