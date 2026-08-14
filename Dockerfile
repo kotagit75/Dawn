@@ -24,6 +24,6 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /app/target/release/btfy /usr/local/bin/btfy
 COPY --from=builder /app/temperature.sh /usr/local/bin/temperature.sh
 
-VOLUME ["/app/node"]
+VOLUME ["/app/"]
 
 ENTRYPOINT ["btfy", "--beacon-cmd", "temperature.sh"]
