@@ -55,10 +55,10 @@ impl Node {
         if self.config.mining {
             let _ = self.event_tx.send(Command::Event(Event::MineBlock)).await;
         }
-        if let Some(address) = self.config.peer.clone() {
+        for peer_address in self.config.peer.iter() {
             let _ = self
                 .event_tx
-                .send(Command::Event(Event::AddPeer(Peer::new(&address))))
+                .send(Command::Event(Event::AddPeer(Peer::new(&peer_address))))
                 .await;
         }
     }

@@ -53,9 +53,9 @@ pub struct Args {
     #[arg(short, long)]
     pub mining: bool,
 
-    /// The IP address to add to the peer list
+    /// The address to add to the peer list
     #[arg(short, long)]
-    pub peer: Option<String>,
+    pub peer: Vec<String>,
 
     /// The port to listen on for the API
     #[arg(short, long, default_value = "8080")]
