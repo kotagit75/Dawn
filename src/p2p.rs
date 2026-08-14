@@ -87,8 +87,7 @@ impl Peer {
             .write_all(&bitcode::encode(&payload))
             .await
             .inspect_err(|err| error!("failed to send message to peer({}): {:?}", self.addr, err))
-            .ok();
-        Ok(())
+            .map(|_| ())
     }
 }
 
