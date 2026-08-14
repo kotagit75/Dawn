@@ -1,4 +1,5 @@
 /target
 
-node/
+chain
+key.der
 repomix-output.xml
