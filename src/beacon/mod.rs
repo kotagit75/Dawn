@@ -77,7 +77,7 @@ struct BeaconLocation {
     lon: f64,
     icao_code: String,
 }
-const LOCATIONS_GEOJSON: &str = include_str!("beacon/locations.geojson");
+const LOCATIONS_GEOJSON: &str = include_str!("locations.geojson");
 static LOCATIONS_LOCATIONS: LazyLock<Vec<BeaconLocation>> = LazyLock::new(|| {
     let Ok(collection) = LOCATIONS_GEOJSON.parse::<FeatureCollection>() else {
         return Vec::new();

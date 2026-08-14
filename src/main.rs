@@ -12,11 +12,10 @@ use crate::{
     beacon::InMemoryBeaconCache,
     chain_repository::{ChainRepository, FileChainRepository},
     config::CONFIG,
-    effect::run_effect,
     key_repository::{FileKeyRepository, KeyRepository},
     p2p::Peer,
     state::State,
-    update::{Command, UpdateResult, event::Event, update},
+    update::{Command, UpdateResult, effect::run_effect, event::Event, update},
 };
 
 pub mod api;
@@ -24,7 +23,6 @@ pub mod beacon;
 pub mod blockchain;
 pub mod chain_repository;
 pub mod config;
-pub mod effect;
 pub mod key_repository;
 pub mod p2p;
 pub mod state;
