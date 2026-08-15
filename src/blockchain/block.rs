@@ -161,13 +161,12 @@ impl std::fmt::Display for BlockDataOwned {
     }
 }
 
-// BlockData<'a> に変換メソッドを追加
 impl<'a> BlockData<'a> {
     pub fn to_owned(&self) -> BlockDataOwned {
         BlockDataOwned {
             index: self.index,
             timestamp: self.timestamp,
-            transactions: self.transactions.to_vec(), // Transaction は Clone である前提
+            transactions: self.transactions.to_vec(),
             beacon: self.beacon.clone(),
             issuer: self.issuer.clone(),
             previous_hash: self.previous_hash,
