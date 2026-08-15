@@ -160,16 +160,20 @@ impl BeaconProcess {
 
     async fn fetch_temperature(
         &mut self,
-        lat: f64,
-        lon: f64,
-        icao_code: &str,
+        location: &BeaconLocation,
         timestamp: i64,
     ) -> Option<i32> {
         let timeout_duration = std::time::Duration::from_secs(5);
 
         timeout(timeout_duration, async {
             self.stdin
-                .write_all(format!("{} {} {} {}\n", lat, lon, icao_code, timestamp).as_bytes())
+                .write_all(
+                    format!(
+                        "{} {} {} {}\n",
+                        location.lat, location.lon, location.icao_code, timestamp
+                    )
+                    .as_bytes(),
+                )
                 .await
                 .ok()?;
             self.stdin.flush().await.ok()?;
@@ -195,9 +199,7 @@ static BEACON_PROCESS: LazyLock<AsyncMutex<Option<BeaconProcess>>> =
 
 async fn fetch_temperature(
     command: &[String],
-    lat: f64,
-    lon: f64,
-    icao_code: &str,
+    location: &BeaconLocation,
     timestamp: i64,
 ) -> Option<i32> {
     let mut guard = BEACON_PROCESS.lock().await;
@@ -205,11 +207,7 @@ async fn fetch_temperature(
         *guard = BeaconProcess::spawn(command);
     }
     let result = match guard.as_mut() {
-        Some(process) => {
-            process
-                .fetch_temperature(lat, lon, icao_code, timestamp)
-                .await
-        }
+        Some(process) => process.fetch_temperature(location, timestamp).await,
         None => None,
     };
     if result.is_none() {
@@ -242,15 +240,7 @@ pub async fn fetch_beacon(
     pb.set_message("fetching beacon");
 
     for (i, location) in locations.iter().enumerate() {
-        if let Some(temp) = fetch_temperature(
-            command,
-            location.lat,
-            location.lon,
-            &location.icao_code,
-            timestamp,
-        )
-        .await
-        {
+        if let Some(temp) = fetch_temperature(command, location, timestamp).await {
             temperatures.push(temp);
             pb.inc(1);
         } else {
