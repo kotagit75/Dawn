@@ -1,11 +1,11 @@
 use std::io::Error;
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{Mutex, mpsc, watch};
 
 use crate::{
     api,
-    beacon::BeaconCache,
+    beacon::{BeaconCache, provider::BeaconProvider},
     chain_repository::ChainRepository,
     config::Config,
     event::{Event, command::Command, effect::Effect},
@@ -14,7 +14,7 @@ use crate::{
     state::State,
 };
 
-pub struct Node {
+pub struct Node<T: BeaconProvider + 'static> {
     state: State,
     config: Config,
     chain_repo: Box<dyn ChainRepository>,
@@ -22,14 +22,16 @@ pub struct Node {
     event_rx: mpsc::Receiver<Command>,
     state_tx: watch::Sender<State>,
     beacon_cache: Arc<dyn BeaconCache>,
+    beacon_provider: Arc<Mutex<T>>,
 }
 
-impl Node {
+impl<T: BeaconProvider + 'static> Node<T> {
     pub async fn new(
         config: Config,
         chain_repo: Box<dyn ChainRepository>,
         key_repo: Box<dyn KeyRepository>,
         beacon_cache: Arc<dyn BeaconCache>,
+        beacon_provider: Arc<Mutex<T>>,
     ) -> Result<Self, Error> {
         let state = init_state(chain_repo.as_ref(), key_repo.as_ref())?;
         let (event_tx, event_rx) = mpsc::channel(256);
@@ -40,6 +42,7 @@ impl Node {
             config,
             chain_repo,
             beacon_cache,
+            beacon_provider,
             event_tx,
             event_rx,
             state_tx,
@@ -67,7 +70,12 @@ impl Node {
         while let Some(command) = self.event_rx.recv().await {
             let event = command.into_event();
             let result = event
-                .process(&mut self.state, self.beacon_cache.as_ref(), &self.config)
+                .process(
+                    &mut self.state,
+                    self.beacon_cache.as_ref(),
+                    &mut *self.beacon_provider.lock().await,
+                    &self.config,
+                )
                 .await;
             if result.chain_changed {
                 let _ = self
@@ -89,8 +97,10 @@ impl Node {
         let event_tx_clone = self.event_tx.clone();
         let state_clone = self.state.clone();
         let config_clone = self.config.clone();
+        let beacon_provider_clone = Arc::clone(&self.beacon_provider);
         tokio::spawn(async move {
-            let events = effect.run(state_clone, config_clone).await;
+            let mut guard = beacon_provider_clone.lock().await;
+            let events = effect.run(state_clone, config_clone, &mut *guard).await;
             for event in events {
                 let _ = event_tx_clone.send(Command::Event(event)).await;
             }

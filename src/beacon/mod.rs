@@ -3,17 +3,15 @@ use geojson::{FeatureCollection, GeometryValue};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    process::Stdio,
     sync::{LazyLock, Mutex},
 };
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    process::{Child, ChildStdin, ChildStdout, Command},
-    sync::Mutex as AsyncMutex,
-    time::timeout,
+
+use crate::{
+    beacon::provider::BeaconProvider,
+    util::{hash::Hashed, progressbar::create_progress_bar},
 };
 
-use crate::util::{hash::Hashed, progressbar::create_progress_bar};
+pub mod provider;
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Encode, Decode)]
 pub struct Beacon {
@@ -69,7 +67,7 @@ impl BeaconCache for InMemoryBeaconCache {
 }
 
 #[derive(Debug, Clone)]
-struct BeaconLocation {
+pub struct BeaconLocation {
     lat: f64,
     lon: f64,
     icao_code: String,
@@ -112,107 +110,12 @@ static LOCATIONS_LOCATIONS: LazyLock<Vec<BeaconLocation>> = LazyLock::new(|| {
     result
 });
 
-#[derive(Debug, Deserialize)]
-struct BeaconResponse {
-    temperature: i32,
-}
-
-struct BeaconProcess {
-    _child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-}
-
-impl BeaconProcess {
-    fn spawn(command: &[String]) -> Option<Self> {
-        if command.is_empty() {
-            error!("beacon command is not configured");
-            return None;
-        }
-
-        let mut child = Command::new(&command[0]);
-        child
-            .args(&command[1..])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
-
-        let mut child = child
-            .spawn()
-            .inspect_err(|err| error!("failed to start beacon process: {}", err))
-            .ok()?;
-
-        let Some(stdin) = child.stdin.take() else {
-            error!("failed to open beacon process stdin");
-            return None;
-        };
-        let Some(stdout) = child.stdout.take() else {
-            error!("failed to open beacon process stdout");
-            return None;
-        };
-
-        Some(Self {
-            _child: child,
-            stdin,
-            stdout: BufReader::new(stdout),
-        })
-    }
-
-    async fn fetch_temperature(
-        &mut self,
-        location: &BeaconLocation,
-        timestamp: i64,
-    ) -> Option<i32> {
-        let timeout_duration = std::time::Duration::from_secs(5);
-
-        timeout(timeout_duration, async {
-            self.stdin
-                .write_all(
-                    format!(
-                        "{} {} {} {}\n",
-                        location.lat, location.lon, location.icao_code, timestamp
-                    )
-                    .as_bytes(),
-                )
-                .await
-                .ok()?;
-            self.stdin.flush().await.ok()?;
-
-            let mut line = String::new();
-            let read = self.stdout.read_line(&mut line).await.ok()?;
-            if read == 0 {
-                return None;
-            }
-
-            serde_json::from_str::<BeaconResponse>(line.trim())
-                .ok()
-                .map(|r| r.temperature)
-        })
-        .await
-        .ok()
-        .flatten()
-    }
-}
-
-static BEACON_PROCESS: LazyLock<AsyncMutex<Option<BeaconProcess>>> =
-    LazyLock::new(|| AsyncMutex::new(None));
-
-async fn fetch_temperature(
-    command: &[String],
+async fn fetch_temperature<T: BeaconProvider>(
+    provider: &mut T,
     location: &BeaconLocation,
     timestamp: i64,
 ) -> Option<i32> {
-    let mut guard = BEACON_PROCESS.lock().await;
-    if guard.is_none() {
-        *guard = BeaconProcess::spawn(command);
-    }
-    let result = match guard.as_mut() {
-        Some(process) => process.fetch_temperature(location, timestamp).await,
-        None => None,
-    };
-    if result.is_none() {
-        *guard = None;
-    }
+    let result = provider.fetch_temperature(location, timestamp).await;
     result
 }
 
@@ -228,8 +131,8 @@ fn choose_locations(latest_block_hash: &Hashed) -> Vec<BeaconLocation> {
         .collect()
 }
 
-pub async fn fetch_beacon(
-    command: &[String],
+pub async fn fetch_beacon<T: BeaconProvider>(
+    provider: &mut T,
     latest_block_hash: &Hashed,
     timestamp: i64,
 ) -> Option<Beacon> {
@@ -240,7 +143,7 @@ pub async fn fetch_beacon(
     pb.set_message("fetching beacon");
 
     for (i, location) in locations.iter().enumerate() {
-        if let Some(temp) = fetch_temperature(command, location, timestamp).await {
+        if let Some(temp) = fetch_temperature(provider, location, timestamp).await {
             temperatures.push(temp);
             pb.inc(1);
         } else {
@@ -257,8 +160,8 @@ pub async fn fetch_beacon(
     })
 }
 
-pub async fn prefetch_beacon(
-    command: &[String],
+pub async fn prefetch_beacon<T: BeaconProvider>(
+    provider: &mut T,
     cache: &dyn BeaconCache,
     latest_block_hash: &Hashed,
     timestamp: i64,
@@ -267,7 +170,7 @@ pub async fn prefetch_beacon(
     if cache.get(&key).is_some() {
         return true;
     }
-    let Some(beacon) = fetch_beacon(command, latest_block_hash, timestamp).await else {
+    let Some(beacon) = fetch_beacon(provider, latest_block_hash, timestamp).await else {
         return false;
     };
     cache.insert(key, beacon);

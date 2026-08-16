@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time;
 
 use crate::{
-    beacon::fetch_beacon,
+    beacon::{fetch_beacon, provider::BeaconProvider},
     blockchain::{block::solve_block_vdf, transaction::Transaction},
     config::Config,
     event::Event,
@@ -23,14 +23,19 @@ pub fn when_changed(effect: Effect, changed: bool) -> Effect {
 }
 
 impl Effect {
-    pub async fn run(self, state: State, config: Config) -> Vec<Event> {
+    pub async fn run<T: BeaconProvider>(
+        self,
+        state: State,
+        config: Config,
+        beacon_provider: &mut T,
+    ) -> Vec<Event> {
         match self {
             Effect::None => Vec::new(),
             Effect::MineBlock(transactions) => {
                 info!("generating next block");
                 let next_timestamp = Utc::now().timestamp();
                 let Some(beacon) = fetch_beacon(
-                    &config.beacon_cmd,
+                    beacon_provider,
                     &state.chain.get_latest_block().hash,
                     next_timestamp,
                 )

@@ -1,5 +1,5 @@
 use crate::{
-    beacon::{BeaconCache, prefetch_beacon},
+    beacon::{BeaconCache, prefetch_beacon, provider::BeaconProvider},
     blockchain::{block::Block, chain::Chain, transaction::Transaction},
     event::{
         beacon::prefetch_chain_beacons,
@@ -9,20 +9,26 @@ use crate::{
     state::State,
 };
 
-pub async fn handle_p2p_message(
+pub async fn handle_p2p_message<T: BeaconProvider>(
     state: &mut State,
     beacon_cache: &dyn BeaconCache,
     peer_option: Option<Peer>,
     message: P2PMessage,
     vdf_difficulty: u64,
-    beacon_cmd: &[String],
+    beacon_provider: &mut T,
 ) -> Effect {
     match message {
         P2PMessage::QueryAll => handle_query_all(state),
         P2PMessage::QueryLatest => handle_query_latest(state),
         P2PMessage::ResponseBlockChain(blocks) => {
-            handle_response_block_chain(state, blocks, beacon_cache, vdf_difficulty, beacon_cmd)
-                .await
+            handle_response_block_chain(
+                state,
+                blocks,
+                beacon_cache,
+                vdf_difficulty,
+                beacon_provider,
+            )
+            .await
         }
         P2PMessage::QueryTransactions => handle_query_transactions(state),
         P2PMessage::ResponseTransactions(transactions) => {
@@ -43,12 +49,12 @@ fn handle_query_latest(state: &State) -> Effect {
     Effect::Broadcast(P2PMessage::ResponseBlockChain(blocks))
 }
 
-async fn handle_response_block_chain(
+async fn handle_response_block_chain<T: BeaconProvider>(
     state: &mut State,
     blocks: Vec<Block>,
     beacon_cache: &dyn BeaconCache,
     vdf_difficulty: u64,
-    beacon_cmd: &[String],
+    beacon_provider: &mut T,
 ) -> Effect {
     let Some(received_latest_block) = blocks.last() else {
         return Effect::None;
@@ -57,7 +63,7 @@ async fn handle_response_block_chain(
     if received_latest_block.index > held_latest_block.index {
         if received_latest_block.previous_hash == held_latest_block.hash {
             let _ = prefetch_beacon(
-                beacon_cmd,
+                beacon_provider,
                 beacon_cache,
                 &held_latest_block.hash,
                 received_latest_block.timestamp,
@@ -80,7 +86,7 @@ async fn handle_response_block_chain(
         } else if blocks.len() == 1 {
             return Effect::Broadcast(P2PMessage::QueryAll);
         } else {
-            prefetch_chain_beacons(beacon_cmd, beacon_cache, &blocks).await;
+            prefetch_chain_beacons(beacon_provider, beacon_cache, &blocks).await;
             info!("replacing chain with {} blocks", blocks.len());
             state
                 .chain

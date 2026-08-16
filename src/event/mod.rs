@@ -1,5 +1,5 @@
 use crate::{
-    beacon::BeaconCache,
+    beacon::{BeaconCache, provider::BeaconProvider},
     blockchain::{address::Address, block::Block},
     config::Config,
     event::{
@@ -38,10 +38,11 @@ pub enum Event {
     P2PMessage(Option<Peer>, P2PMessage),
 }
 impl Event {
-    pub async fn process(
+    pub async fn process<T: BeaconProvider>(
         self,
         state: &mut State,
         beacon_cache: &dyn BeaconCache,
+        beacon_provider: &mut T,
         config: &Config,
     ) -> UpdateResult {
         let previous_state = state.clone();
@@ -58,7 +59,7 @@ impl Event {
                     peer_option,
                     message,
                     config.vdf_difficulty,
-                    &config.beacon_cmd,
+                    beacon_provider,
                 )
                 .await
             }
@@ -79,7 +80,7 @@ impl Event {
 mod tests {
     use super::*;
     use crate::{
-        beacon::{Beacon, InMemoryBeaconCache},
+        beacon::{Beacon, InMemoryBeaconCache, provider::dummy::DummyBeaconProvider},
         blockchain::{
             address::Address,
             block::{Block, MAX_TRANSACTIONS_PER_BLOCK, genesis_block},
@@ -147,8 +148,9 @@ mod tests {
 
     async fn run_update(event: Event, state: &mut State) -> Effect {
         let cache = InMemoryBeaconCache::new();
+        let mut provider = DummyBeaconProvider;
         event
-            .process(state, &cache, &Config::default())
+            .process(state, &cache, &mut provider, &Config::default())
             .await
             .effect
     }

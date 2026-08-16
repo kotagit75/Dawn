@@ -8,10 +8,13 @@ use clap::Parser;
 use log::Level;
 use std::sync::Arc;
 
+use crate::beacon::InMemoryBeaconCache;
+use crate::beacon::provider::command::CommandBeaconProvider;
 use crate::{
-    beacon::InMemoryBeaconCache, chain_repository::FileChainRepository, config::Config,
-    key_repository::FileKeyRepository, node::Node,
+    chain_repository::FileChainRepository, config::Config, key_repository::FileKeyRepository,
+    node::Node,
 };
+use tokio::sync::Mutex;
 
 pub mod api;
 pub mod beacon;
@@ -31,11 +34,15 @@ async fn main() {
 
     let config = Args::parse().to_config();
 
+    let Some(beacon_provider) = CommandBeaconProvider::spawn(&config.beacon_cmd) else {
+        return;
+    };
     let Ok(node) = Node::new(
         config,
         Box::new(FileChainRepository::new("chain")),
         Box::new(FileKeyRepository::new("key.der")),
         Arc::new(InMemoryBeaconCache::new()),
+        Arc::new(Mutex::new(beacon_provider)),
     )
     .await
     else {
