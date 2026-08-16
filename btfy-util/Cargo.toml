@@ -1,0 +1,13 @@
+[package]
+name = "btfy-util"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitcode.workspace = true
+hex.workspace = true
+indicatif.workspace = true
+rsa.workspace = true
+serde.workspace = true
+sha2.workspace = true
+vdf-rs.workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "btfy-node"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+btfy-util = { path = "../btfy-util" }
+btfy-core = { path = "../btfy-core" }
+btfy-beacon = { path = "../btfy-beacon" }
+simple_logger.workspace = true
+log.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+serde.workspace = true
+axum.workspace = true
+bitcode.workspace = true
+futures.workspace = true
+clap.workspace = true

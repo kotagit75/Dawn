@@ -8,7 +8,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY btfy-util ./btfy-util
+COPY btfy-beacon ./btfy-beacon
+COPY btfy-core ./btfy-core
+COPY btfy-node ./btfy-node
 COPY ./example/dummy.sh ./temperature.sh
 
 RUN cargo build --release
@@ -21,9 +24,9 @@ RUN apt-get update && apt-get install -y \
     libgmp10 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/btfy /usr/local/bin/btfy
+COPY --from=builder /app/target/release/btfy-node /usr/local/bin/btfy-node
 COPY --from=builder /app/temperature.sh /usr/local/bin/temperature.sh
 
 VOLUME ["/app/"]
 
-ENTRYPOINT ["btfy", "--beacon-cmd", "temperature.sh"]
+ENTRYPOINT ["btfy-node", "--beacon-cmd", "temperature.sh"]

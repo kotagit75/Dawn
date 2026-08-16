@@ -1,0 +1,12 @@
+[package]
+name = "btfy-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+btfy-beacon = { path = "../btfy-beacon" }
+btfy-util = { path = "../btfy-util" }
+bitcode.workspace = true
+regex.workspace = true
+serde.workspace = true
+vdf-rs.workspace = true
