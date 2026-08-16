@@ -1,5 +1,5 @@
 use crate::{
-    beacon::{BeaconCache, provider::BeaconProvider},
+    beacon::{cache::BeaconCache, provider::BeaconProvider},
     blockchain::{address::Address, block::Block},
     config::Config,
     event::{
@@ -80,7 +80,7 @@ impl Event {
 mod tests {
     use super::*;
     use crate::{
-        beacon::{Beacon, InMemoryBeaconCache, provider::dummy::DummyBeaconProvider},
+        beacon::{Beacon, cache::InMemoryBeaconCache, provider::dummy::DummyBeaconProvider},
         blockchain::{
             address::Address,
             block::{Block, MAX_TRANSACTIONS_PER_BLOCK, genesis_block},

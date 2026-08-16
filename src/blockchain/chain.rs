@@ -2,7 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    beacon::BeaconCache,
+    beacon::cache::BeaconCache,
     blockchain::{
         block::{Block, genesis_block},
         validation::is_valid_new_block,
@@ -82,7 +82,7 @@ impl Chain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::beacon::{Beacon, InMemoryBeaconCache};
+    use crate::beacon::{Beacon, cache::InMemoryBeaconCache};
     use crate::blockchain::block::{Block, genesis_block};
     use crate::blockchain::transaction::Transaction;
     use crate::util::signature::SignatureWrapper;

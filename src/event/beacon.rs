@@ -1,5 +1,5 @@
 use crate::{
-    beacon::{BeaconCache, prefetch_beacon, provider::BeaconProvider},
+    beacon::{cache::BeaconCache, prefetch_beacon, provider::BeaconProvider},
     blockchain::{block::Block, chain::CHECKPOINT_DEPTH},
 };
 

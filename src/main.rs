@@ -8,7 +8,7 @@ use clap::Parser;
 use log::Level;
 use std::sync::Arc;
 
-use crate::beacon::InMemoryBeaconCache;
+use crate::beacon::cache::InMemoryBeaconCache;
 use crate::beacon::provider::command::CommandBeaconProvider;
 use crate::{
     chain_repository::FileChainRepository, config::Config, key_repository::FileKeyRepository,

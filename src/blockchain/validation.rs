@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::{
-    beacon::{BeaconCache, BeaconKey, is_valid_beacon},
+    beacon::{
+        cache::{BeaconCache, BeaconKey},
+        is_valid_beacon,
+    },
     blockchain::{
         address::Address,
         block::{Block, MAX_TRANSACTIONS_PER_BLOCK, genesis_block},

@@ -5,7 +5,7 @@ use tokio::sync::{Mutex, mpsc, watch};
 
 use crate::{
     api,
-    beacon::{BeaconCache, provider::BeaconProvider},
+    beacon::{cache::BeaconCache, provider::BeaconProvider},
     chain_repository::ChainRepository,
     config::Config,
     event::{Event, command::Command, effect::Effect},
