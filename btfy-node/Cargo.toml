@@ -16,3 +16,4 @@ axum.workspace = true
 bitcode.workspace = true
 futures.workspace = true
 clap.workspace = true
+anyhow = "1.0.104"

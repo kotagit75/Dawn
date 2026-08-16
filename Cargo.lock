@@ -265,6 +265,7 @@ dependencies = [
 name = "btfy-node"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "bitcode",
  "btfy-beacon",

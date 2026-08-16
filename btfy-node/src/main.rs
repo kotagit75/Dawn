@@ -2,6 +2,7 @@
 extern crate log;
 extern crate simple_logger as logger;
 
+use anyhow::{Ok, Result};
 use clap::Parser;
 use log::Level;
 use std::sync::Arc;
@@ -23,28 +24,23 @@ pub mod p2p;
 pub mod state;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     logger::init_with_level(Level::Info).unwrap();
 
     let config = Args::parse().to_config();
 
-    let Ok(beacon_provider) = CommandBeaconProvider::spawn(&config.beacon_cmd)
-        .inspect_err(|err| error!("failed to spawn beacon provider: {}", err))
-    else {
-        return;
-    };
-    let Ok(node) = Node::new(
-        config,
+    let node = Node::new(
+        config.clone(),
         Box::new(FileChainRepository::new("chain")),
         Box::new(FileKeyRepository::new("key.der")),
         Arc::new(InMemoryBeaconCache::new()),
-        Arc::new(Mutex::new(beacon_provider)),
+        Arc::new(Mutex::new(CommandBeaconProvider::spawn(
+            &config.beacon_cmd,
+        )?)),
     )
-    .await
-    else {
-        return;
-    };
+    .await?;
     node.run().await;
+    Ok(())
 }
 
 pub const VDF_DIFFICULTY: u64 = 5295676;
