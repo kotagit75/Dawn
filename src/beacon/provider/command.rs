@@ -6,7 +6,7 @@ use tokio::{
     time::timeout,
 };
 
-use crate::beacon::{BeaconLocation, provider::BeaconProvider};
+use crate::beacon::{location::BeaconLocation, provider::BeaconProvider};
 
 #[derive(Debug, Deserialize)]
 struct BeaconResponse {
@@ -71,7 +71,10 @@ impl BeaconProvider for CommandBeaconProvider {
                     .write_all(
                         format!(
                             "{} {} {} {}\n",
-                            location.lat, location.lon, location.icao_code, timestamp
+                            location.lat(),
+                            location.lon(),
+                            location.icao_code(),
+                            timestamp
                         )
                         .as_bytes(),
                     )

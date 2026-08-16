@@ -1,16 +1,16 @@
 use bitcode::{Decode, Encode};
-use geojson::{FeatureCollection, GeometryValue};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-};
+use std::{collections::HashMap, sync::Mutex};
 
 use crate::{
-    beacon::provider::BeaconProvider,
+    beacon::{
+        location::{BEACON_LOCATIONS, BeaconLocation},
+        provider::BeaconProvider,
+    },
     util::{hash::Hashed, progressbar::create_progress_bar},
 };
 
+pub mod location;
 pub mod provider;
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Encode, Decode)]
@@ -66,50 +66,6 @@ impl BeaconCache for InMemoryBeaconCache {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct BeaconLocation {
-    lat: f64,
-    lon: f64,
-    icao_code: String,
-}
-const LOCATIONS_GEOJSON: &str = include_str!("locations.geojson");
-static LOCATIONS_LOCATIONS: LazyLock<Vec<BeaconLocation>> = LazyLock::new(|| {
-    let Ok(collection) = LOCATIONS_GEOJSON.parse::<FeatureCollection>() else {
-        return Vec::new();
-    };
-    let features = collection.features;
-
-    let mut result = Vec::new();
-    for feature in features {
-        let Some(geometry) = feature.geometry else {
-            continue;
-        };
-        let Some(properties) = feature.properties else {
-            continue;
-        };
-        let (lat, lon) = match geometry.value {
-            GeometryValue::Point { coordinates } => (coordinates[1], coordinates[0]),
-            _ => continue,
-        };
-
-        let icao_code = match properties.get("icao_code") {
-            Some(code) => code.as_str(),
-            None => continue,
-        };
-
-        let Some(icao_code) = icao_code else {
-            continue;
-        };
-
-        result.push(BeaconLocation {
-            lat,
-            lon,
-            icao_code: icao_code.to_string(),
-        });
-    }
-    result
-});
-
 async fn fetch_temperature<T: BeaconProvider>(
     provider: &mut T,
     location: &BeaconLocation,
@@ -120,13 +76,13 @@ async fn fetch_temperature<T: BeaconProvider>(
 }
 
 fn choose_locations(latest_block_hash: &Hashed) -> Vec<BeaconLocation> {
-    let len = LOCATIONS_LOCATIONS.len();
+    let len = BEACON_LOCATIONS.len();
     if len == 0 {
         return Vec::new();
     }
     latest_block_hash
         .iter()
-        .flat_map(|i| LOCATIONS_LOCATIONS.get((*i as usize) % len))
+        .flat_map(|i| BEACON_LOCATIONS.get((*i as usize) % len))
         .cloned()
         .collect()
 }
