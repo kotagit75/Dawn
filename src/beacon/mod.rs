@@ -13,6 +13,7 @@ use crate::{
 pub mod cache;
 pub mod location;
 pub mod provider;
+pub mod validation;
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Encode, Decode)]
 pub struct Beacon {
@@ -83,14 +84,4 @@ pub async fn prefetch_beacon<T: BeaconProvider>(
     };
     cache.insert(key, beacon);
     true
-}
-
-pub fn is_valid_beacon(own_beacon: &Beacon, target_beacon: &Beacon) -> bool {
-    own_beacon
-        .values
-        .iter()
-        .zip(target_beacon.values.iter())
-        .all(
-            |(a, b)| (a - b).abs() <= 5, /* Allowable error is within 0.5 degrees Celsius.*/
-        )
 }

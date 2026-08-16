@@ -5,7 +5,7 @@ use regex::Regex;
 use crate::{
     beacon::{
         cache::{BeaconCache, BeaconKey},
-        is_valid_beacon,
+        validation::is_valid_beacon,
     },
     blockchain::{
         address::Address,
