@@ -24,8 +24,7 @@ async fn fetch_temperature<T: BeaconProvider>(
     location: &BeaconLocation,
     timestamp: i64,
 ) -> Option<i32> {
-    let result = provider.fetch_temperature(location, timestamp).await;
-    result
+    provider.fetch_temperature(location, timestamp).await
 }
 
 fn choose_locations(latest_block_hash: &Hashed) -> Vec<BeaconLocation> {
