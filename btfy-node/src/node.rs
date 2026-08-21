@@ -99,8 +99,9 @@ impl<T: BeaconProvider + 'static> Node<T> {
         let config_clone = self.config.clone();
         let beacon_provider_clone = Arc::clone(&self.beacon_provider);
         tokio::spawn(async move {
-            let mut guard = beacon_provider_clone.lock().await;
-            let events = effect.run(state_clone, config_clone, &mut *guard).await;
+            let events = effect
+                .run(state_clone, config_clone, &beacon_provider_clone)
+                .await;
             for event in events {
                 let _ = event_tx_clone.send(Command::Event(event)).await;
             }

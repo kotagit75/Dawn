@@ -1,6 +1,6 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use tokio::time;
+use tokio::{sync::Mutex, time};
 
 use crate::{
     config::Config,
@@ -27,25 +27,27 @@ impl Effect {
         self,
         state: State,
         config: Config,
-        beacon_provider: &mut T,
+        beacon_provider: &Mutex<T>,
     ) -> Vec<Event> {
         match self {
             Effect::None => Vec::new(),
             Effect::MineBlock(transactions) => {
                 info!("generating next block");
                 let next_timestamp = Utc::now().timestamp();
-                let Some(beacon) = fetch_beacon(
-                    beacon_provider,
-                    &state.chain.get_latest_block().hash,
-                    next_timestamp,
-                )
-                .await
-                else {
+                let Some(beacon) = ({
+                    let mut beacon_provider = beacon_provider.lock().await;
+                    fetch_beacon(
+                        &mut *beacon_provider,
+                        &state.chain.get_latest_block().hash,
+                        next_timestamp,
+                    )
+                    .await
+                }) else {
                     error!("failed to fetch beacon");
                     return vec![Event::MineBlock];
                 };
-                let now = time::Instant::now();
 
+                let now = time::Instant::now();
                 let block_data = state.chain.generate_next_block_data(
                     &state.address,
                     beacon,
